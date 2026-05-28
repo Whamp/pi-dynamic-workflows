@@ -80,3 +80,5 @@ The sandbox intentionally does not expose Node APIs like `fs`, `require`, or imp
 npm install
 npm test
 ```
+
+`npm test` builds the package and runs parser unit tests.

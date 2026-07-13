@@ -1,0 +1,31 @@
+{
+  "script": "export const meta = { name: 'schema_integration', description: 'One real subagent proves the generated workflow path reaches a model', phases: [{ title: 'Check' }] }\nconst result = await agent('Determine whether 17 is prime. Return only the requested structured result.', {\n  label: 'real prime check',\n  model: 'openai-codex/gpt-5.4-mini:low',\n  schema: {\n    type: 'object',\n    properties: {\n      prime: { type: 'boolean' },\n      evidence: { type: 'string' }\n    },\n    required: ['prime', 'evidence'],\n    additionalProperties: false\n  }\n})\nreturn result",
+  "result": {
+    "meta": {
+      "name": "schema_integration",
+      "description": "One real subagent proves the generated workflow path reaches a model",
+      "phases": [
+        {
+          "title": "Check"
+        }
+      ]
+    },
+    "result": {
+      "prime": true,
+      "evidence": "17 has no divisors other than 1 and 17; it is prime."
+    },
+    "logs": [],
+    "phases": ["Check"],
+    "agentCount": 1,
+    "durationMs": 4461,
+    "runId": "run-mrjldwqh",
+    "tokenUsage": {
+      "input": 15798,
+      "output": 56,
+      "total": 15854,
+      "cost": 0.0121005,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    }
+  }
+}

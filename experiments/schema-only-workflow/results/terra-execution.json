@@ -1,0 +1,61 @@
+{
+  "capturedBeforeExecution": true,
+  "script": "export const meta = { name: 'parallel_primality_synthesis', description: 'Run two independent primality checks for 17 and synthesize surviving evidence.', phases: [{ title: 'Independent checks' }, { title: 'Synthesis' }] };\n\nphase('Independent checks');\nconst checks = await parallel([\n  () => agent('Independently determine whether 17 is prime. Give a concise, verifiable justification and label it checker A.'),\n  () => agent('Independently determine whether 17 is prime. Give a concise, verifiable justification using a different framing if possible and label it checker B.')\n]);\n\nconst surviving = [];\nconst failedChecks = [];\nfor (let i = 0; i < checks.length; i++) {\n  const value = checks[i];\n  if (value && String(value).trim()) surviving.push({ checker: i === 0 ? 'A' : 'B', result: String(value) });\n  else failedChecks.push(i === 0 ? 'A' : 'B');\n}\n\nphase('Synthesis');\nconst synthesis = await agent(`Synthesize the following surviving independent evidence about whether 17 is prime. Return ONLY a compact JSON object with keys prime (boolean), evidence (array of concise strings), and failedChecks (array). Do not add markdown.\\nEvidence: ${JSON.stringify(surviving)}\\nFailed checks: ${JSON.stringify(failedChecks)}`);\nlog(synthesis);",
+  "toolArgs": {
+    "background": false,
+    "maxAgents": 3,
+    "concurrency": 2,
+    "script": "export const meta = { name: 'parallel_primality_synthesis', description: 'Run two independent primality checks for 17 and synthesize surviving evidence.', phases: [{ title: 'Independent checks' }, { title: 'Synthesis' }] };\n\nphase('Independent checks');\nconst checks = await parallel([\n  () => agent('Independently determine whether 17 is prime. Give a concise, verifiable justification and label it checker A.'),\n  () => agent('Independently determine whether 17 is prime. Give a concise, verifiable justification using a different framing if possible and label it checker B.')\n]);\n\nconst surviving = [];\nconst failedChecks = [];\nfor (let i = 0; i < checks.length; i++) {\n  const value = checks[i];\n  if (value && String(value).trim()) surviving.push({ checker: i === 0 ? 'A' : 'B', result: String(value) });\n  else failedChecks.push(i === 0 ? 'A' : 'B');\n}\n\nphase('Synthesis');\nconst synthesis = await agent(`Synthesize the following surviving independent evidence about whether 17 is prime. Return ONLY a compact JSON object with keys prime (boolean), evidence (array of concise strings), and failedChecks (array). Do not add markdown.\\nEvidence: ${JSON.stringify(surviving)}\\nFailed checks: ${JSON.stringify(failedChecks)}`);\nlog(synthesis);"
+  },
+  "calls": [
+    {
+      "index": 0,
+      "prompt": "Independently determine whether 17 is prime. Give a concise, verifiable justification and label it checker A.",
+      "label": "Independent checks agent 1",
+      "result": "17 is prime: no integer from 2 through floor(sqrt(17)) divides it."
+    },
+    {
+      "index": 1,
+      "prompt": "Independently determine whether 17 is prime. Give a concise, verifiable justification using a different framing if possible and label it checker B.",
+      "label": "Independent checks agent 2",
+      "result": "",
+      "simulatedFailure": "empty assistant output"
+    },
+    {
+      "index": 2,
+      "prompt": "Synthesize the following surviving independent evidence about whether 17 is prime. Return ONLY a compact JSON object with keys prime (boolean), evidence (array of concise strings), and failedChecks (array). Do not add markdown.\nEvidence: [{\"checker\":\"A\",\"result\":\"17 is prime: no integer from 2 through floor(sqrt(17)) divides it.\"}]\nFailed checks: [\"B\"]",
+      "label": "Synthesis agent 3",
+      "result": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[]}"
+    }
+  ],
+  "execution": {
+    "meta": {
+      "name": "parallel_primality_synthesis",
+      "description": "Run two independent primality checks for 17 and synthesize surviving evidence.",
+      "phases": [
+        {
+          "title": "Independent checks"
+        },
+        {
+          "title": "Synthesis"
+        }
+      ]
+    },
+    "logs": [
+      "agent \"Independent checks agent 2\" exhausted 1 attempt: AGENT_EMPTY_OUTPUT Subagent produced no assistant output",
+      "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[]}"
+    ],
+    "phases": ["Independent checks", "Synthesis"],
+    "agentCount": 3,
+    "durationMs": 15,
+    "runId": "run-mrjl39nu",
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 210,
+      "cost": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    }
+  }
+}

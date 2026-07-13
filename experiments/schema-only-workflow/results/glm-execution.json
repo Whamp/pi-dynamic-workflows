@@ -1,0 +1,59 @@
+{
+  "capturedBeforeExecution": true,
+  "script": "export const meta = {\n  name: 'parallel_primality_check',\n  description: 'Two parallel primality checks for 17 tolerating one failure, then synthesize surviving evidence',\n  phases: [{ title: 'Parallel Checks' }, { title: 'Synthesis' }]\n};\n\nfunction textOf(r) {\n  if (r == null) return '';\n  if (typeof r === 'string') return r;\n  if (r.content) return r.content;\n  if (r.text) return r.text;\n  if (r.output) return r.output;\n  if (r.result) return r.result;\n  return typeof r === 'object' ? JSON.stringify(r) : String(r);\n}\n\nphase('Parallel Checks');\n\nconst checks = await parallel([\n  () => agent('Primality check #1 for the number 17: check divisors from 2 through floor(sqrt(17)). State clearly, in one concise sentence, whether 17 is prime (true/false) and why.'),\n  () => agent('Primality check #2 for the number 17: apply the definition of a prime number to 17. State clearly, in one concise sentence, whether 17 is prime (true/false) and why.')\n]);\n\nlet failedChecks = 0;\nconst evidence = [];\nfor (const r of checks) {\n  const t = textOf(r).trim();\n  if (t) evidence.push(t); else failedChecks += 1;\n}\n\nlog('Surviving checks: ' + evidence.length + '; failed checks: ' + failedChecks);\n\nlet result;\nif (evidence.length === 0) {\n  // Both checkers failed: this is beyond the tolerated single failure.\n  result = { prime: null, evidence: 'no surviving evidence — both checkers failed', failedChecks };\n} else {\n  phase('Synthesis');\n  const block = evidence.map((e, i) => 'Checker ' + (i + 1) + ': ' + e).join('\\n');\n  const synth = await agent(\n    'You are synthesizing primality evidence for the number 17.\\n\\n' +\n    'Surviving evidence:\\n' + block + '\\n\\n' +\n    'Reply with ONLY a compact JSON object and nothing else (no prose, no markdown, no code fences):\\n' +\n    '{\"prime\": <true|false>, \"evidence\": \"<one short sentence summarizing why>\"}'\n  );\n  let parsed = {};\n  try {\n    const cleaned = textOf(synth).replace(/```/g, '').replace(/json/gi, '').trim();\n    const m = cleaned.match(/\\{[\\s\\S]*\\}/);\n    parsed = JSON.parse(m ? m[0] : cleaned);\n  } catch (e) { parsed = {}; }\n  result = {\n    prime: parsed.prime,\n    evidence: parsed.evidence,\n    failedChecks\n  };\n}\n\nresult;",
+  "toolArgs": {
+    "background": false,
+    "script": "export const meta = {\n  name: 'parallel_primality_check',\n  description: 'Two parallel primality checks for 17 tolerating one failure, then synthesize surviving evidence',\n  phases: [{ title: 'Parallel Checks' }, { title: 'Synthesis' }]\n};\n\nfunction textOf(r) {\n  if (r == null) return '';\n  if (typeof r === 'string') return r;\n  if (r.content) return r.content;\n  if (r.text) return r.text;\n  if (r.output) return r.output;\n  if (r.result) return r.result;\n  return typeof r === 'object' ? JSON.stringify(r) : String(r);\n}\n\nphase('Parallel Checks');\n\nconst checks = await parallel([\n  () => agent('Primality check #1 for the number 17: check divisors from 2 through floor(sqrt(17)). State clearly, in one concise sentence, whether 17 is prime (true/false) and why.'),\n  () => agent('Primality check #2 for the number 17: apply the definition of a prime number to 17. State clearly, in one concise sentence, whether 17 is prime (true/false) and why.')\n]);\n\nlet failedChecks = 0;\nconst evidence = [];\nfor (const r of checks) {\n  const t = textOf(r).trim();\n  if (t) evidence.push(t); else failedChecks += 1;\n}\n\nlog('Surviving checks: ' + evidence.length + '; failed checks: ' + failedChecks);\n\nlet result;\nif (evidence.length === 0) {\n  // Both checkers failed: this is beyond the tolerated single failure.\n  result = { prime: null, evidence: 'no surviving evidence — both checkers failed', failedChecks };\n} else {\n  phase('Synthesis');\n  const block = evidence.map((e, i) => 'Checker ' + (i + 1) + ': ' + e).join('\\n');\n  const synth = await agent(\n    'You are synthesizing primality evidence for the number 17.\\n\\n' +\n    'Surviving evidence:\\n' + block + '\\n\\n' +\n    'Reply with ONLY a compact JSON object and nothing else (no prose, no markdown, no code fences):\\n' +\n    '{\"prime\": <true|false>, \"evidence\": \"<one short sentence summarizing why>\"}'\n  );\n  let parsed = {};\n  try {\n    const cleaned = textOf(synth).replace(/```/g, '').replace(/json/gi, '').trim();\n    const m = cleaned.match(/\\{[\\s\\S]*\\}/);\n    parsed = JSON.parse(m ? m[0] : cleaned);\n  } catch (e) { parsed = {}; }\n  result = {\n    prime: parsed.prime,\n    evidence: parsed.evidence,\n    failedChecks\n  };\n}\n\nresult;"
+  },
+  "calls": [
+    {
+      "index": 0,
+      "prompt": "Primality check #1 for the number 17: check divisors from 2 through floor(sqrt(17)). State clearly, in one concise sentence, whether 17 is prime (true/false) and why.",
+      "label": "Parallel Checks agent 1",
+      "result": "17 is prime: no integer from 2 through floor(sqrt(17)) divides it."
+    },
+    {
+      "index": 1,
+      "prompt": "Primality check #2 for the number 17: apply the definition of a prime number to 17. State clearly, in one concise sentence, whether 17 is prime (true/false) and why.",
+      "label": "Parallel Checks agent 2",
+      "result": "",
+      "simulatedFailure": "empty assistant output"
+    },
+    {
+      "index": 2,
+      "prompt": "You are synthesizing primality evidence for the number 17.\n\nSurviving evidence:\nChecker 1: 17 is prime: no integer from 2 through floor(sqrt(17)) divides it.\n\nReply with ONLY a compact JSON object and nothing else (no prose, no markdown, no code fences):\n{\"prime\": <true|false>, \"evidence\": \"<one short sentence summarizing why>\"}",
+      "label": "Synthesis agent 3",
+      "result": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[]}"
+    }
+  ],
+  "execution": {
+    "meta": {
+      "name": "parallel_primality_check",
+      "description": "Two parallel primality checks for 17 tolerating one failure, then synthesize surviving evidence",
+      "phases": [
+        {
+          "title": "Parallel Checks"
+        },
+        {
+          "title": "Synthesis"
+        }
+      ]
+    },
+    "logs": [
+      "agent \"Parallel Checks agent 2\" exhausted 1 attempt: AGENT_EMPTY_OUTPUT Subagent produced no assistant output",
+      "Surviving checks: 1; failed checks: 1"
+    ],
+    "phases": ["Parallel Checks", "Synthesis"],
+    "agentCount": 3,
+    "durationMs": 39,
+    "runId": "run-mrjl5aeg",
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 222,
+      "cost": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    }
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "capturedBeforeExecution": true,
+  "script": "export const meta = { name: 'parallel_primality_checks', description: 'Run independent primality checks for 17 and synthesize surviving evidence.', phases: [{ title: 'Checks' }, { title: 'Synthesis' }] }\n\nphase('Checks')\nconst checks = await parallel([\n  () => agent('Independently determine whether 17 is prime. Show a concise mathematical check by testing divisibility only by primes up to sqrt(17). Return JSON with checker, prime (boolean), and evidence (string).', {\n    label: 'trial division',\n    tier: 'small',\n    schema: {\n      type: 'object',\n      properties: {\n        checker: { type: 'string' },\n        prime: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['checker', 'prime', 'evidence'],\n      additionalProperties: false\n    }\n  }),\n  () => agent('Independently check if 17 is prime using a distinct elementary argument: list its possible factor pairs or explain why none exist. Return JSON with checker, prime (boolean), and evidence (string).', {\n    label: 'factor pairs',\n    tier: 'small',\n    schema: {\n      type: 'object',\n      properties: {\n        checker: { type: 'string' },\n        prime: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['checker', 'prime', 'evidence'],\n      additionalProperties: false\n    }\n  })\n])\n\nphase('Synthesis')\nconst surviving = checks.filter(x => x !== null)\nconst failedChecks = checks.map((x, i) => x === null ? 'checker-' + (i + 1) : null).filter(x => x !== null)\nconst synthesis = await agent('Synthesize the surviving independent evidence below into the required compact result. The number 17 is prime exactly when the evidence supports it. Preserve accurate evidence, note failed check identifiers separately, and return only JSON matching the schema. Surviving evidence: ' + JSON.stringify(surviving) + '. Failed checks: ' + JSON.stringify(failedChecks) + '.', {\n  label: 'evidence synthesis',\n  tier: 'big',\n  schema: {\n    type: 'object',\n    properties: {\n      prime: { type: 'boolean' },\n      evidence: { type: 'array', items: { type: 'string' } },\n      failedChecks: { type: 'array', items: { type: 'string' } }\n    },\n    required: ['prime', 'evidence', 'failedChecks'],\n    additionalProperties: false\n  }\n})\n\nif (synthesis !== null) return synthesis\nreturn { prime: surviving.length > 0 && surviving.every(x => x.prime === true), evidence: surviving.map(x => x.evidence), failedChecks }",
+  "toolArgs": {
+    "background": false,
+    "maxAgents": 3,
+    "concurrency": 2,
+    "script": "export const meta = { name: 'parallel_primality_checks', description: 'Run independent primality checks for 17 and synthesize surviving evidence.', phases: [{ title: 'Checks' }, { title: 'Synthesis' }] }\n\nphase('Checks')\nconst checks = await parallel([\n  () => agent('Independently determine whether 17 is prime. Show a concise mathematical check by testing divisibility only by primes up to sqrt(17). Return JSON with checker, prime (boolean), and evidence (string).', {\n    label: 'trial division',\n    tier: 'small',\n    schema: {\n      type: 'object',\n      properties: {\n        checker: { type: 'string' },\n        prime: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['checker', 'prime', 'evidence'],\n      additionalProperties: false\n    }\n  }),\n  () => agent('Independently check if 17 is prime using a distinct elementary argument: list its possible factor pairs or explain why none exist. Return JSON with checker, prime (boolean), and evidence (string).', {\n    label: 'factor pairs',\n    tier: 'small',\n    schema: {\n      type: 'object',\n      properties: {\n        checker: { type: 'string' },\n        prime: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['checker', 'prime', 'evidence'],\n      additionalProperties: false\n    }\n  })\n])\n\nphase('Synthesis')\nconst surviving = checks.filter(x => x !== null)\nconst failedChecks = checks.map((x, i) => x === null ? 'checker-' + (i + 1) : null).filter(x => x !== null)\nconst synthesis = await agent('Synthesize the surviving independent evidence below into the required compact result. The number 17 is prime exactly when the evidence supports it. Preserve accurate evidence, note failed check identifiers separately, and return only JSON matching the schema. Surviving evidence: ' + JSON.stringify(surviving) + '. Failed checks: ' + JSON.stringify(failedChecks) + '.', {\n  label: 'evidence synthesis',\n  tier: 'big',\n  schema: {\n    type: 'object',\n    properties: {\n      prime: { type: 'boolean' },\n      evidence: { type: 'array', items: { type: 'string' } },\n      failedChecks: { type: 'array', items: { type: 'string' } }\n    },\n    required: ['prime', 'evidence', 'failedChecks'],\n    additionalProperties: false\n  }\n})\n\nif (synthesis !== null) return synthesis\nreturn { prime: surviving.length > 0 && surviving.every(x => x.prime === true), evidence: surviving.map(x => x.evidence), failedChecks }"
+  },
+  "calls": [
+    {
+      "index": 0,
+      "prompt": "Independently determine whether 17 is prime. Show a concise mathematical check by testing divisibility only by primes up to sqrt(17). Return JSON with checker, prime (boolean), and evidence (string).",
+      "label": "trial division",
+      "tier": "small",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "checker": {
+            "type": "string"
+          },
+          "prime": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "required": ["checker", "prime", "evidence"],
+        "additionalProperties": false
+      },
+      "result": "17 is prime: no integer from 2 through floor(sqrt(17)) divides it."
+    },
+    {
+      "index": 1,
+      "prompt": "Independently check if 17 is prime using a distinct elementary argument: list its possible factor pairs or explain why none exist. Return JSON with checker, prime (boolean), and evidence (string).",
+      "label": "factor pairs",
+      "tier": "small",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "checker": {
+            "type": "string"
+          },
+          "prime": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "required": ["checker", "prime", "evidence"],
+        "additionalProperties": false
+      },
+      "simulatedFailure": "recoverable subagent failure"
+    },
+    {
+      "index": 2,
+      "prompt": "Synthesize the surviving independent evidence below into the required compact result. The number 17 is prime exactly when the evidence supports it. Preserve accurate evidence, note failed check identifiers separately, and return only JSON matching the schema. Surviving evidence: [\"17 is prime: no integer from 2 through floor(sqrt(17)) divides it.\"]. Failed checks: [\"checker-2\"].",
+      "label": "evidence synthesis",
+      "tier": "big",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "prime": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "failedChecks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["prime", "evidence", "failedChecks"],
+        "additionalProperties": false
+      },
+      "result": {
+        "prime": true,
+        "evidence": ["No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17)."],
+        "failedChecks": ["checker-2"]
+      }
+    }
+  ],
+  "execution": {
+    "meta": {
+      "name": "parallel_primality_checks",
+      "description": "Run independent primality checks for 17 and synthesize surviving evidence.",
+      "phases": [
+        {
+          "title": "Checks"
+        },
+        {
+          "title": "Synthesis"
+        }
+      ]
+    },
+    "result": {
+      "prime": true,
+      "evidence": ["No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17)."],
+      "failedChecks": ["checker-2"]
+    },
+    "logs": ["agent \"factor pairs\" exhausted 1 attempt: AGENT_EMPTY_OUTPUT simulated subagent failure"],
+    "phases": ["Checks", "Synthesis"],
+    "agentCount": 3,
+    "durationMs": 9,
+    "runId": "run-mrjlbxxa",
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 250,
+      "cost": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    }
+  }
+}

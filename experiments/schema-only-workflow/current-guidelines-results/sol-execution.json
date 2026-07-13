@@ -1,0 +1,123 @@
+{
+  "capturedBeforeExecution": true,
+  "script": "export const meta = { name: 'check_seventeen_prime', description: 'Run two independent primality checks for 17 and synthesize surviving evidence', phases: [{ title: 'Independent Checks' }, { title: 'Synthesis' }] };\n\nphase('Independent Checks');\nconst checkSpecs = [\n  {\n    name: 'trial-division',\n    prompt: 'Independently determine whether 17 is prime using trial division. Check every relevant integer divisor through sqrt(17). Return a concise JSON object with checker, prime, and evidence.'\n  },\n  {\n    name: 'wilson-theorem',\n    prompt: 'Independently determine whether 17 is prime using Wilson’s theorem or an equivalent modular factorial calculation. Show enough concise arithmetic to support the conclusion. Return a JSON object with checker, prime, and evidence.'\n  }\n];\nconst checkSchema = {\n  type: 'object',\n  properties: {\n    checker: { type: 'string' },\n    prime: { type: 'boolean' },\n    evidence: { type: 'string' }\n  },\n  required: ['checker', 'prime', 'evidence'],\n  additionalProperties: false\n};\nconst results = await parallel(checkSpecs.map((spec, index) => () => agent(spec.prompt, {\n  label: index === 0 ? 'trial division' : 'wilson theorem',\n  tier: 'small',\n  schema: checkSchema\n})));\nconst surviving = results.filter(result => result !== null);\nconst failedChecks = checkSpecs.filter((_, index) => results[index] === null).map(spec => spec.name);\n\nphase('Synthesis');\nconst synthesis = await agent(`Synthesize the surviving independent primality-check evidence for 17. Treat the supplied failed-check list as authoritative; do not invent evidence for failed checks. Return only the requested compact object. Surviving evidence: ${JSON.stringify(surviving)}. Failed checks: ${JSON.stringify(failedChecks)}.`, {\n  label: 'final synthesis',\n  tier: 'big',\n  schema: {\n    type: 'object',\n    properties: {\n      prime: { type: 'boolean' },\n      evidence: { type: 'array', items: { type: 'string' } },\n      failedChecks: { type: 'array', items: { type: 'string' } }\n    },\n    required: ['prime', 'evidence', 'failedChecks'],\n    additionalProperties: false\n  }\n});\nreturn synthesis === null ? { prime: surviving.length > 0 && surviving.every(item => item.prime), evidence: surviving.map(item => item.evidence), failedChecks: [...failedChecks, 'final-synthesis'] } : synthesis;",
+  "toolArgs": {
+    "script": "export const meta = { name: 'check_seventeen_prime', description: 'Run two independent primality checks for 17 and synthesize surviving evidence', phases: [{ title: 'Independent Checks' }, { title: 'Synthesis' }] };\n\nphase('Independent Checks');\nconst checkSpecs = [\n  {\n    name: 'trial-division',\n    prompt: 'Independently determine whether 17 is prime using trial division. Check every relevant integer divisor through sqrt(17). Return a concise JSON object with checker, prime, and evidence.'\n  },\n  {\n    name: 'wilson-theorem',\n    prompt: 'Independently determine whether 17 is prime using Wilson’s theorem or an equivalent modular factorial calculation. Show enough concise arithmetic to support the conclusion. Return a JSON object with checker, prime, and evidence.'\n  }\n];\nconst checkSchema = {\n  type: 'object',\n  properties: {\n    checker: { type: 'string' },\n    prime: { type: 'boolean' },\n    evidence: { type: 'string' }\n  },\n  required: ['checker', 'prime', 'evidence'],\n  additionalProperties: false\n};\nconst results = await parallel(checkSpecs.map((spec, index) => () => agent(spec.prompt, {\n  label: index === 0 ? 'trial division' : 'wilson theorem',\n  tier: 'small',\n  schema: checkSchema\n})));\nconst surviving = results.filter(result => result !== null);\nconst failedChecks = checkSpecs.filter((_, index) => results[index] === null).map(spec => spec.name);\n\nphase('Synthesis');\nconst synthesis = await agent(`Synthesize the surviving independent primality-check evidence for 17. Treat the supplied failed-check list as authoritative; do not invent evidence for failed checks. Return only the requested compact object. Surviving evidence: ${JSON.stringify(surviving)}. Failed checks: ${JSON.stringify(failedChecks)}.`, {\n  label: 'final synthesis',\n  tier: 'big',\n  schema: {\n    type: 'object',\n    properties: {\n      prime: { type: 'boolean' },\n      evidence: { type: 'array', items: { type: 'string' } },\n      failedChecks: { type: 'array', items: { type: 'string' } }\n    },\n    required: ['prime', 'evidence', 'failedChecks'],\n    additionalProperties: false\n  }\n});\nreturn synthesis === null ? { prime: surviving.length > 0 && surviving.every(item => item.prime), evidence: surviving.map(item => item.evidence), failedChecks: [...failedChecks, 'final-synthesis'] } : synthesis;",
+    "background": false,
+    "maxAgents": 3,
+    "concurrency": 2
+  },
+  "calls": [
+    {
+      "index": 0,
+      "prompt": "Independently determine whether 17 is prime using trial division. Check every relevant integer divisor through sqrt(17). Return a concise JSON object with checker, prime, and evidence.",
+      "label": "trial division",
+      "tier": "small",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "checker": {
+            "type": "string"
+          },
+          "prime": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "required": ["checker", "prime", "evidence"],
+        "additionalProperties": false
+      },
+      "result": "17 is prime: no integer from 2 through floor(sqrt(17)) divides it."
+    },
+    {
+      "index": 1,
+      "prompt": "Independently determine whether 17 is prime using Wilson’s theorem or an equivalent modular factorial calculation. Show enough concise arithmetic to support the conclusion. Return a JSON object with checker, prime, and evidence.",
+      "label": "wilson theorem",
+      "tier": "small",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "checker": {
+            "type": "string"
+          },
+          "prime": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "required": ["checker", "prime", "evidence"],
+        "additionalProperties": false
+      },
+      "simulatedFailure": "recoverable subagent failure"
+    },
+    {
+      "index": 2,
+      "prompt": "Synthesize the surviving independent primality-check evidence for 17. Treat the supplied failed-check list as authoritative; do not invent evidence for failed checks. Return only the requested compact object. Surviving evidence: [\"17 is prime: no integer from 2 through floor(sqrt(17)) divides it.\"]. Failed checks: [\"wilson-theorem\"].",
+      "label": "final synthesis",
+      "tier": "big",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "prime": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "failedChecks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["prime", "evidence", "failedChecks"],
+        "additionalProperties": false
+      },
+      "result": {
+        "prime": true,
+        "evidence": ["No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17)."],
+        "failedChecks": ["wilson-theorem"]
+      }
+    }
+  ],
+  "execution": {
+    "meta": {
+      "name": "check_seventeen_prime",
+      "description": "Run two independent primality checks for 17 and synthesize surviving evidence",
+      "phases": [
+        {
+          "title": "Independent Checks"
+        },
+        {
+          "title": "Synthesis"
+        }
+      ]
+    },
+    "result": {
+      "prime": true,
+      "evidence": ["No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17)."],
+      "failedChecks": ["wilson-theorem"]
+    },
+    "logs": ["agent \"wilson theorem\" exhausted 1 attempt: AGENT_EMPTY_OUTPUT simulated subagent failure"],
+    "phases": ["Independent Checks", "Synthesis"],
+    "agentCount": 3,
+    "durationMs": 9,
+    "runId": "run-mrjlhgyk",
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 245,
+      "cost": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "capturedBeforeExecution": true,
+  "script": "export const meta = {\n  name: 'primality_check_17',\n  description: 'Run two parallel primality checks for 17, tolerate one failure, synthesize surviving evidence',\n  phases: [{ title: 'Check' }, { title: 'Synthesize' }]\n};\n\nphase('Check');\n\nconst N = 17;\n\nconst checks = await parallel([\n  () => agent(\n    `Determine whether the integer ${N} is prime. Method: trial division by every integer d with 2 <= d <= floor(sqrt(${N})). Show which divisors you test and the remainder. Then give a definitive verdict.`,\n    {\n      label: 'checker-trial-division',\n      tier: 'small',\n      schema: {\n        type: 'object',\n        properties: {\n          number: { type: 'integer' },\n          prime: { type: 'boolean' },\n          method: { type: 'string' },\n          reasoning: { type: 'string' }\n        },\n        required: ['number', 'prime', 'method', 'reasoning']\n      }\n    }\n  ),\n  () => agent(\n    `Determine whether the integer ${N} is prime. Method: directly test divisibility by the candidate prime factors 2, 3, 5, 7 (the primes up to sqrt(${N})). Report each test and the remainder, then give a definitive verdict.`,\n    {\n      label: 'checker-divisor-probe',\n      tier: 'small',\n      schema: {\n        type: 'object',\n        properties: {\n          number: { type: 'integer' },\n          prime: { type: 'boolean' },\n          method: { type: 'string' },\n          reasoning: { type: 'string' }\n        },\n        required: ['number', 'prime', 'method', 'reasoning']\n      }\n    }\n  )\n]);\n\nconst evidence = checks.filter((c) => c !== null);\nconst failedChecks = checks.length - evidence.length;\n\nphase('Synthesize');\n\n// Tolerate failure: if at least one check survived, synthesize from it.\nif (evidence.length === 0) {\n  return {\n    prime: null,\n    evidence: 'All primality checks failed; no surviving evidence.',\n    failedChecks\n  };\n}\n\nconst synthesis = await agent(\n  `You are synthesizing independent primality-check results for the integer ${N}. Surviving evidence (as JSON): ${JSON.stringify(evidence)}. ` +\n    `Reconcile the checks into ONE verdict. Produce a single concise combined evidence string summarizing the methods and the agreed conclusion. ` +\n    `The number of checks that failed is ${failedChecks}.`,\n  {\n    label: 'synthesize-verdict',\n    tier: 'big',\n    schema: {\n      type: 'object',\n      properties: {\n        prime: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['prime', 'evidence']\n    }\n  }\n);\n\n// failedChecks is ground truth computed from actual failures; prime/evidence come from synthesis.\nreturn {\n  prime: synthesis ? synthesis.prime : null,\n  evidence: synthesis ? synthesis.evidence : 'Synthesis failed.',\n  failedChecks\n};",
+  "toolArgs": {
+    "background": false,
+    "script": "export const meta = {\n  name: 'primality_check_17',\n  description: 'Run two parallel primality checks for 17, tolerate one failure, synthesize surviving evidence',\n  phases: [{ title: 'Check' }, { title: 'Synthesize' }]\n};\n\nphase('Check');\n\nconst N = 17;\n\nconst checks = await parallel([\n  () => agent(\n    `Determine whether the integer ${N} is prime. Method: trial division by every integer d with 2 <= d <= floor(sqrt(${N})). Show which divisors you test and the remainder. Then give a definitive verdict.`,\n    {\n      label: 'checker-trial-division',\n      tier: 'small',\n      schema: {\n        type: 'object',\n        properties: {\n          number: { type: 'integer' },\n          prime: { type: 'boolean' },\n          method: { type: 'string' },\n          reasoning: { type: 'string' }\n        },\n        required: ['number', 'prime', 'method', 'reasoning']\n      }\n    }\n  ),\n  () => agent(\n    `Determine whether the integer ${N} is prime. Method: directly test divisibility by the candidate prime factors 2, 3, 5, 7 (the primes up to sqrt(${N})). Report each test and the remainder, then give a definitive verdict.`,\n    {\n      label: 'checker-divisor-probe',\n      tier: 'small',\n      schema: {\n        type: 'object',\n        properties: {\n          number: { type: 'integer' },\n          prime: { type: 'boolean' },\n          method: { type: 'string' },\n          reasoning: { type: 'string' }\n        },\n        required: ['number', 'prime', 'method', 'reasoning']\n      }\n    }\n  )\n]);\n\nconst evidence = checks.filter((c) => c !== null);\nconst failedChecks = checks.length - evidence.length;\n\nphase('Synthesize');\n\n// Tolerate failure: if at least one check survived, synthesize from it.\nif (evidence.length === 0) {\n  return {\n    prime: null,\n    evidence: 'All primality checks failed; no surviving evidence.',\n    failedChecks\n  };\n}\n\nconst synthesis = await agent(\n  `You are synthesizing independent primality-check results for the integer ${N}. Surviving evidence (as JSON): ${JSON.stringify(evidence)}. ` +\n    `Reconcile the checks into ONE verdict. Produce a single concise combined evidence string summarizing the methods and the agreed conclusion. ` +\n    `The number of checks that failed is ${failedChecks}.`,\n  {\n    label: 'synthesize-verdict',\n    tier: 'big',\n    schema: {\n      type: 'object',\n      properties: {\n        prime: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['prime', 'evidence']\n    }\n  }\n);\n\n// failedChecks is ground truth computed from actual failures; prime/evidence come from synthesis.\nreturn {\n  prime: synthesis ? synthesis.prime : null,\n  evidence: synthesis ? synthesis.evidence : 'Synthesis failed.',\n  failedChecks\n};"
+  },
+  "calls": [
+    {
+      "index": 0,
+      "prompt": "Determine whether the integer 17 is prime. Method: trial division by every integer d with 2 <= d <= floor(sqrt(17)). Show which divisors you test and the remainder. Then give a definitive verdict.",
+      "label": "checker-trial-division",
+      "tier": "small",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "prime": {
+            "type": "boolean"
+          },
+          "method": {
+            "type": "string"
+          },
+          "reasoning": {
+            "type": "string"
+          }
+        },
+        "required": ["number", "prime", "method", "reasoning"]
+      },
+      "result": "17 is prime: no integer from 2 through floor(sqrt(17)) divides it."
+    },
+    {
+      "index": 1,
+      "prompt": "Determine whether the integer 17 is prime. Method: directly test divisibility by the candidate prime factors 2, 3, 5, 7 (the primes up to sqrt(17)). Report each test and the remainder, then give a definitive verdict.",
+      "label": "checker-divisor-probe",
+      "tier": "small",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "prime": {
+            "type": "boolean"
+          },
+          "method": {
+            "type": "string"
+          },
+          "reasoning": {
+            "type": "string"
+          }
+        },
+        "required": ["number", "prime", "method", "reasoning"]
+      },
+      "simulatedFailure": "recoverable subagent failure"
+    },
+    {
+      "index": 2,
+      "prompt": "You are synthesizing independent primality-check results for the integer 17. Surviving evidence (as JSON): [\"17 is prime: no integer from 2 through floor(sqrt(17)) divides it.\"]. Reconcile the checks into ONE verdict. Produce a single concise combined evidence string summarizing the methods and the agreed conclusion. The number of checks that failed is 1.",
+      "label": "synthesize-verdict",
+      "tier": "big",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "prime": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "required": ["prime", "evidence"]
+      },
+      "result": {
+        "prime": true,
+        "evidence": "No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).",
+        "failedChecks": []
+      }
+    }
+  ],
+  "execution": {
+    "meta": {
+      "name": "primality_check_17",
+      "description": "Run two parallel primality checks for 17, tolerate one failure, synthesize surviving evidence",
+      "phases": [
+        {
+          "title": "Check"
+        },
+        {
+          "title": "Synthesize"
+        }
+      ]
+    },
+    "result": {
+      "prime": true,
+      "evidence": "No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).",
+      "failedChecks": 1
+    },
+    "logs": ["agent \"checker-divisor-probe\" exhausted 1 attempt: AGENT_EMPTY_OUTPUT simulated subagent failure"],
+    "phases": ["Check", "Synthesize"],
+    "agentCount": 3,
+    "durationMs": 10,
+    "runId": "run-mrjlc6fw",
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 245,
+      "cost": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "schemaOnly": {
+    "sol": {
+      "model": "openai-codex/gpt-5.6-sol:high",
+      "workflowToolCalls": 1,
+      "toolError": false,
+      "toolResult": "{\"prime\":true,\"evidence\":\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\",\"failedChecks\":0}",
+      "finalAssistantText": "{\"prime\":true,\"evidence\":\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\",\"failedChecks\":0}"
+    },
+    "terra": {
+      "model": "openai-codex/gpt-5.6-terra:high",
+      "workflowToolCalls": 1,
+      "toolError": false,
+      "toolResult": "",
+      "finalAssistantText": ""
+    },
+    "luna": {
+      "model": "openai-codex/gpt-5.6-luna:high",
+      "workflowToolCalls": 1,
+      "toolError": false,
+      "toolResult": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[2]}",
+      "finalAssistantText": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[2]}"
+    },
+    "glm": {
+      "model": "zai/glm-5.2:high",
+      "workflowToolCalls": 1,
+      "toolError": false,
+      "toolResult": "",
+      "finalAssistantText": ""
+    }
+  },
+  "currentGuidelines": {
+    "sol": {
+      "model": "openai-codex/gpt-5.6-sol:high",
+      "workflowToolCalls": 1,
+      "toolError": false,
+      "toolResult": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[\"wilson-theorem\"]}",
+      "finalAssistantText": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[\"wilson-theorem\"]}"
+    },
+    "terra": {
+      "model": "openai-codex/gpt-5.6-terra:high",
+      "workflowToolCalls": 1,
+      "toolError": false,
+      "toolResult": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[\"sqrt criterion\"]}",
+      "finalAssistantText": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[\"sqrt criterion\"]}"
+    },
+    "luna": {
+      "model": "openai-codex/gpt-5.6-luna:high",
+      "workflowToolCalls": 1,
+      "toolError": false,
+      "toolResult": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[\"checker-2\"]}",
+      "finalAssistantText": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[\"checker-2\"]}"
+    },
+    "glm": {
+      "model": "zai/glm-5.2:high",
+      "workflowToolCalls": 1,
+      "toolError": false,
+      "toolResult": "{\"prime\":true,\"evidence\":\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\",\"failedChecks\":1}",
+      "finalAssistantText": "Workflow ran inline. Here's the result:\n\n```json\n{\n  \"prime\": true,\n  \"evidence\": \"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\",\n  \"failedChecks\": 1\n}\n```\n\n**Verdict:** 17 is prime. One of the two parallel checkers failed (tolerated, as requested); the surviving evidence carried through to the synthesis agent, which reconciled it into the single verdict above. `failedChecks` reflects ground truth computed from the actual `parallel()` results rather than the model's self-report."
+    }
+  }
+}

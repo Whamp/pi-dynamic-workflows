@@ -1,0 +1,122 @@
+{
+  "capturedBeforeExecution": true,
+  "script": "export const meta = { name: 'parallel_primality', description: 'Independently check whether 17 is prime and synthesize the surviving evidence.', phases: [{ title: 'Independent checks' }, { title: 'Synthesis' }] };\n\nphase('Independent checks');\nconst checks = await parallel([\n  () => agent('Independently determine whether 17 is prime using trial division. Return concise evidence: method, divisors checked, and conclusion.', {\n    label: 'trial division',\n    tier: 'small',\n    schema: {\n      type: 'object',\n      properties: {\n        method: { type: 'string' },\n        conclusion: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['method', 'conclusion', 'evidence'],\n      additionalProperties: false\n    }\n  }),\n  () => agent('Independently determine whether 17 is prime using a mathematical primality criterion distinct from a plain exhaustive explanation. Return concise evidence: method, facts checked, and conclusion.', {\n    label: 'sqrt criterion',\n    tier: 'small',\n    schema: {\n      type: 'object',\n      properties: {\n        method: { type: 'string' },\n        conclusion: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['method', 'conclusion', 'evidence'],\n      additionalProperties: false\n    }\n  })\n]);\n\nconst surviving = checks.filter(Boolean);\nconst failedChecks = checks.map((check, index) => check ? null : ['trial division', 'sqrt criterion'][index]).filter(Boolean);\n\nphase('Synthesis');\nconst result = await agent(`Synthesize only the surviving independent evidence below about whether 17 is prime. A missing checker is tolerated. Return a compact JSON object with prime, evidence, and failedChecks.\\n\\nSurviving evidence: ${JSON.stringify(surviving)}\\nFailed checks: ${JSON.stringify(failedChecks)}`, {\n  label: 'evidence synthesis',\n  tier: 'big',\n  schema: {\n    type: 'object',\n    properties: {\n      prime: { type: 'boolean' },\n      evidence: { type: 'array', items: { type: 'string' } },\n      failedChecks: { type: 'array', items: { type: 'string' } }\n    },\n    required: ['prime', 'evidence', 'failedChecks'],\n    additionalProperties: false\n  }\n});\n\nreturn result || { prime: surviving.every(check => check.conclusion), evidence: surviving.map(check => check.evidence), failedChecks };",
+  "toolArgs": {
+    "background": false,
+    "maxAgents": 3,
+    "script": "export const meta = { name: 'parallel_primality', description: 'Independently check whether 17 is prime and synthesize the surviving evidence.', phases: [{ title: 'Independent checks' }, { title: 'Synthesis' }] };\n\nphase('Independent checks');\nconst checks = await parallel([\n  () => agent('Independently determine whether 17 is prime using trial division. Return concise evidence: method, divisors checked, and conclusion.', {\n    label: 'trial division',\n    tier: 'small',\n    schema: {\n      type: 'object',\n      properties: {\n        method: { type: 'string' },\n        conclusion: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['method', 'conclusion', 'evidence'],\n      additionalProperties: false\n    }\n  }),\n  () => agent('Independently determine whether 17 is prime using a mathematical primality criterion distinct from a plain exhaustive explanation. Return concise evidence: method, facts checked, and conclusion.', {\n    label: 'sqrt criterion',\n    tier: 'small',\n    schema: {\n      type: 'object',\n      properties: {\n        method: { type: 'string' },\n        conclusion: { type: 'boolean' },\n        evidence: { type: 'string' }\n      },\n      required: ['method', 'conclusion', 'evidence'],\n      additionalProperties: false\n    }\n  })\n]);\n\nconst surviving = checks.filter(Boolean);\nconst failedChecks = checks.map((check, index) => check ? null : ['trial division', 'sqrt criterion'][index]).filter(Boolean);\n\nphase('Synthesis');\nconst result = await agent(`Synthesize only the surviving independent evidence below about whether 17 is prime. A missing checker is tolerated. Return a compact JSON object with prime, evidence, and failedChecks.\\n\\nSurviving evidence: ${JSON.stringify(surviving)}\\nFailed checks: ${JSON.stringify(failedChecks)}`, {\n  label: 'evidence synthesis',\n  tier: 'big',\n  schema: {\n    type: 'object',\n    properties: {\n      prime: { type: 'boolean' },\n      evidence: { type: 'array', items: { type: 'string' } },\n      failedChecks: { type: 'array', items: { type: 'string' } }\n    },\n    required: ['prime', 'evidence', 'failedChecks'],\n    additionalProperties: false\n  }\n});\n\nreturn result || { prime: surviving.every(check => check.conclusion), evidence: surviving.map(check => check.evidence), failedChecks };"
+  },
+  "calls": [
+    {
+      "index": 0,
+      "prompt": "Independently determine whether 17 is prime using trial division. Return concise evidence: method, divisors checked, and conclusion.",
+      "label": "trial division",
+      "tier": "small",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "conclusion": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "required": ["method", "conclusion", "evidence"],
+        "additionalProperties": false
+      },
+      "result": "17 is prime: no integer from 2 through floor(sqrt(17)) divides it."
+    },
+    {
+      "index": 1,
+      "prompt": "Independently determine whether 17 is prime using a mathematical primality criterion distinct from a plain exhaustive explanation. Return concise evidence: method, facts checked, and conclusion.",
+      "label": "sqrt criterion",
+      "tier": "small",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "conclusion": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "required": ["method", "conclusion", "evidence"],
+        "additionalProperties": false
+      },
+      "simulatedFailure": "recoverable subagent failure"
+    },
+    {
+      "index": 2,
+      "prompt": "Synthesize only the surviving independent evidence below about whether 17 is prime. A missing checker is tolerated. Return a compact JSON object with prime, evidence, and failedChecks.\n\nSurviving evidence: [\"17 is prime: no integer from 2 through floor(sqrt(17)) divides it.\"]\nFailed checks: [\"sqrt criterion\"]",
+      "label": "evidence synthesis",
+      "tier": "big",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "prime": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "failedChecks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["prime", "evidence", "failedChecks"],
+        "additionalProperties": false
+      },
+      "result": {
+        "prime": true,
+        "evidence": ["No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17)."],
+        "failedChecks": ["sqrt criterion"]
+      }
+    }
+  ],
+  "execution": {
+    "meta": {
+      "name": "parallel_primality",
+      "description": "Independently check whether 17 is prime and synthesize the surviving evidence.",
+      "phases": [
+        {
+          "title": "Independent checks"
+        },
+        {
+          "title": "Synthesis"
+        }
+      ]
+    },
+    "result": {
+      "prime": true,
+      "evidence": ["No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17)."],
+      "failedChecks": ["sqrt criterion"]
+    },
+    "logs": ["agent \"sqrt criterion\" exhausted 1 attempt: AGENT_EMPTY_OUTPUT simulated subagent failure"],
+    "phases": ["Independent checks", "Synthesis"],
+    "agentCount": 3,
+    "durationMs": 12,
+    "runId": "run-mrjlbw5e",
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 217,
+      "cost": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    }
+  }
+}

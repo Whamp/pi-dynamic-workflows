@@ -1,0 +1,69 @@
+{
+  "capturedBeforeExecution": true,
+  "script": "export const meta = { name: 'parallel_primality_synthesis', description: 'Run independent primality checks in parallel and synthesize surviving evidence.', phases: [{ title: 'Independent checks' }, { title: 'Synthesis' }] };\n\nphase('Independent checks');\nconst checks = await parallel([\n  () => agent('Check whether 17 is prime. Return a concise mathematical justification, and nothing else.', { model: 'sonnet' }),\n  () => agent('Independently determine whether 17 is prime. Return a concise mathematical justification, and nothing else.', { model: 'sonnet' })\n].map((run, index) => async () => {\n  try {\n    return { checker: index + 1, evidence: await run() };\n  } catch (error) {\n    return { checker: index + 1, failed: true, error: String(error?.message ?? error) };\n  }\n}));\n\nconst surviving = checks.filter(result => !result.failed);\nconst failedChecks = checks.filter(result => result.failed).map(result => result.checker);\n\nphase('Synthesis');\nconst synthesis = await agent(`Synthesize the following surviving evidence about whether 17 is prime. Return ONLY valid compact JSON with exactly these keys: prime (boolean), evidence (array of strings), failedChecks (array of integers). Preserve failedChecks exactly.\nSurviving evidence: ${JSON.stringify(surviving)}\nFailed checker numbers: ${JSON.stringify(failedChecks)}`, { model: 'sonnet' });\n\nlet result;\ntry {\n  result = JSON.parse(synthesis);\n} catch {\n  result = { prime: surviving.length > 0 && surviving.every(item => /prime/i.test(item.evidence)), evidence: surviving.map(item => item.evidence), failedChecks };\n}\nreturn result;",
+  "toolArgs": {
+    "background": false,
+    "maxAgents": 5,
+    "concurrency": 2,
+    "agentRetries": 0,
+    "script": "export const meta = { name: 'parallel_primality_synthesis', description: 'Run independent primality checks in parallel and synthesize surviving evidence.', phases: [{ title: 'Independent checks' }, { title: 'Synthesis' }] };\n\nphase('Independent checks');\nconst checks = await parallel([\n  () => agent('Check whether 17 is prime. Return a concise mathematical justification, and nothing else.', { model: 'sonnet' }),\n  () => agent('Independently determine whether 17 is prime. Return a concise mathematical justification, and nothing else.', { model: 'sonnet' })\n].map((run, index) => async () => {\n  try {\n    return { checker: index + 1, evidence: await run() };\n  } catch (error) {\n    return { checker: index + 1, failed: true, error: String(error?.message ?? error) };\n  }\n}));\n\nconst surviving = checks.filter(result => !result.failed);\nconst failedChecks = checks.filter(result => result.failed).map(result => result.checker);\n\nphase('Synthesis');\nconst synthesis = await agent(`Synthesize the following surviving evidence about whether 17 is prime. Return ONLY valid compact JSON with exactly these keys: prime (boolean), evidence (array of strings), failedChecks (array of integers). Preserve failedChecks exactly.\nSurviving evidence: ${JSON.stringify(surviving)}\nFailed checker numbers: ${JSON.stringify(failedChecks)}`, { model: 'sonnet' });\n\nlet result;\ntry {\n  result = JSON.parse(synthesis);\n} catch {\n  result = { prime: surviving.length > 0 && surviving.every(item => /prime/i.test(item.evidence)), evidence: surviving.map(item => item.evidence), failedChecks };\n}\nreturn result;"
+  },
+  "calls": [
+    {
+      "index": 0,
+      "prompt": "Check whether 17 is prime. Return a concise mathematical justification, and nothing else.",
+      "label": "Independent checks agent 1",
+      "model": "sonnet",
+      "result": "17 is prime: no integer from 2 through floor(sqrt(17)) divides it."
+    },
+    {
+      "index": 1,
+      "prompt": "Independently determine whether 17 is prime. Return a concise mathematical justification, and nothing else.",
+      "label": "Independent checks agent 2",
+      "model": "sonnet",
+      "result": "",
+      "simulatedFailure": "empty assistant output"
+    },
+    {
+      "index": 2,
+      "prompt": "Synthesize the following surviving evidence about whether 17 is prime. Return ONLY valid compact JSON with exactly these keys: prime (boolean), evidence (array of strings), failedChecks (array of integers). Preserve failedChecks exactly.\nSurviving evidence: [{\"checker\":1,\"evidence\":\"17 is prime: no integer from 2 through floor(sqrt(17)) divides it.\"},{\"checker\":2,\"evidence\":null}]\nFailed checker numbers: []",
+      "label": "Synthesis agent 3",
+      "model": "sonnet",
+      "result": "{\"prime\":true,\"evidence\":[\"No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17).\"],\"failedChecks\":[2]}"
+    }
+  ],
+  "execution": {
+    "meta": {
+      "name": "parallel_primality_synthesis",
+      "description": "Run independent primality checks in parallel and synthesize surviving evidence.",
+      "phases": [
+        {
+          "title": "Independent checks"
+        },
+        {
+          "title": "Synthesis"
+        }
+      ]
+    },
+    "result": {
+      "prime": true,
+      "evidence": ["No divisor exists among 2, 3, and 4, which cover candidates through sqrt(17)."],
+      "failedChecks": [2]
+    },
+    "logs": [
+      "agent \"Independent checks agent 2\" exhausted 1 attempt: AGENT_EMPTY_OUTPUT Subagent produced no assistant output"
+    ],
+    "phases": ["Independent checks", "Synthesis"],
+    "agentCount": 3,
+    "durationMs": 13,
+    "runId": "run-mrjl6x55",
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 209,
+      "cost": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    }
+  }
+}

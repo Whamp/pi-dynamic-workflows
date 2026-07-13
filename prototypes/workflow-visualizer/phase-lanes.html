@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase Lanes — Workflow Inspector Prototype</title>
+<style>
+  :root {
+    --ink:#171914; --paper:#e9e5d8; --paper-2:#f4f0e4; --rule:#a7a291;
+    --acid:#c8ff3d; --orange:#ff6b35; --cyan:#54cbd3; --red:#e64b3c;
+    --muted:#686b61; --black:#10120f; --lane-w:318px;
+  }
+  * { box-sizing:border-box; }
+  html,body { height:100%; margin:0; }
+  body { background:var(--paper); color:var(--ink); font:12px/1.35 "IBM Plex Mono","Cascadia Mono","Courier New",monospace; overflow:hidden; }
+  button { font:inherit; color:inherit; }
+  .shell { height:100vh; display:grid; grid-template-rows:82px 42px minmax(0,1fr) 34px; }
+
+  header { background:var(--black); color:#f5f1e6; display:grid; grid-template-columns:330px 1fr auto; align-items:center; padding:0 22px; border-bottom:4px solid var(--acid); }
+  .wordmark { display:flex; align-items:center; gap:13px; }
+  .mark { width:38px; height:38px; border:1px solid #69705e; position:relative; background:repeating-linear-gradient(135deg,transparent 0 5px,#293020 5px 6px); }
+  .mark:before,.mark:after { content:""; position:absolute; background:var(--acid); }
+  .mark:before { width:21px; height:3px; left:8px; top:17px; }
+  .mark:after { width:3px; height:21px; left:17px; top:8px; }
+  h1 { margin:0; font:700 18px/1 "Arial Narrow","Roboto Condensed",sans-serif; letter-spacing:.06em; text-transform:uppercase; }
+  .sub { color:#8f9589; margin-top:5px; font-size:10px; letter-spacing:.12em; }
+  .runline { min-width:0; padding-left:24px; border-left:1px solid #34382f; }
+  .run-title { font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .run-meta { color:#94998e; margin-top:5px; display:flex; gap:18px; }
+  .run-meta strong { color:#d8dcce; font-weight:500; }
+  .capacity { justify-self:end; border:1px solid #626858; padding:9px 12px; max-width:285px; line-height:1.25; background:#181b16; }
+  .capacity b { color:var(--acid); display:block; text-transform:uppercase; font-size:10px; letter-spacing:.1em; margin-bottom:2px; }
+
+  .controlbar { display:flex; align-items:center; padding:0 14px 0 22px; gap:12px; border-bottom:1px solid var(--rule); background:var(--paper-2); }
+  .metric { display:flex; gap:6px; align-items:baseline; padding-right:12px; border-right:1px solid #c7c1b1; }
+  .metric strong { font:700 16px/1 "Arial Narrow",sans-serif; }
+  .metric span { text-transform:uppercase; font-size:9px; color:var(--muted); letter-spacing:.08em; }
+  .legend { margin-left:auto; display:flex; gap:12px; color:#55594f; font-size:10px; align-items:center; }
+  .key { display:flex; gap:5px; align-items:center; }
+  .dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+  .dot.running { background:#82b80f; box-shadow:0 0 0 2px #d2ec93; }
+  .dot.done { background:#1c6d72; }
+  .dot.error { background:var(--red); }
+  .dot.queued { background:#aaa596; }
+  .quiet-button { border:1px solid #aaa594; background:transparent; padding:5px 8px; cursor:pointer; text-transform:uppercase; font-size:9px; }
+  .quiet-button:hover { background:var(--ink); color:var(--paper); }
+
+  .board-wrap { min-height:0; overflow:auto; position:relative; background-color:#dedacc; background-image:linear-gradient(rgba(40,42,35,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(40,42,35,.04) 1px,transparent 1px); background-size:12px 12px; }
+  .board { position:relative; min-width:1360px; padding:12px 18px 70px; display:grid; grid-template-columns:repeat(4,var(--lane-w)); gap:14px; align-items:start; }
+  #edges { position:absolute; inset:0; pointer-events:none; z-index:1; overflow:visible; }
+  .edge { fill:none; stroke:#777b70; stroke-width:1.2; opacity:.72; marker-end:url(#arrow); }
+  .edge.nested { stroke:#b04a2c; stroke-dasharray:4 3; }
+  .edge.unknown { stroke:#86887e; stroke-dasharray:2 4; opacity:.5; }
+
+  .lane { position:relative; z-index:2; border-top:4px solid var(--ink); }
+  .lane[data-phase="execute"] { border-color:#7aaa13; }
+  .lane[data-phase="verify"] { border-color:#237d83; }
+  .lane[data-phase="repair"] { border-color:#bd4b2b; }
+  .lane-head { height:52px; background:rgba(244,240,228,.94); border:1px solid #969183; border-top:0; display:grid; grid-template-columns:38px 1fr auto; align-items:center; padding:0 10px; position:sticky; top:0; z-index:4; backdrop-filter:blur(4px); }
+  .phase-index { font:700 25px/1 "Arial Narrow",sans-serif; color:#aaa594; }
+  .phase-name { font:700 13px/1 "Arial Narrow",sans-serif; letter-spacing:.08em; text-transform:uppercase; }
+  .phase-desc { color:var(--muted); font-size:9px; margin-top:4px; }
+  .phase-count { text-align:right; font-weight:700; }
+  .phase-count small { display:block; color:var(--muted); font-weight:400; }
+
+  .group { margin-top:9px; border-left:2px solid #777a70; padding-left:7px; position:relative; }
+  .group.parallel { border-color:#6d9910; }
+  .group.pipeline { border-color:#23848a; }
+  .group.retry { border-color:#d06a35; }
+  .group.gate { border-color:#a84835; }
+  .group.nested { border-left-style:double; border-left-width:5px; border-color:#33362f; padding-left:5px; }
+  .group-label { height:21px; display:flex; align-items:center; gap:7px; padding:0 6px; border:1px solid #aaa596; border-bottom:0; background:#cac6b9; text-transform:uppercase; font-size:9px; letter-spacing:.07em; }
+  .group-label b { color:#353832; }
+  .group-label span { color:#686b61; margin-left:auto; text-transform:none; letter-spacing:0; }
+
+  details.agent { background:var(--paper-2); border:1px solid #918c7f; border-left:4px solid #aaa596; margin-bottom:5px; position:relative; box-shadow:1px 1px 0 rgba(20,20,15,.08); }
+  details.agent.running { border-left-color:#7daa15; }
+  details.agent.done { border-left-color:#27777c; }
+  details.agent.error { border-left-color:var(--red); }
+  details.agent.queued { opacity:.7; border-left-style:dashed; }
+  details.agent[open] { box-shadow:4px 5px 0 rgba(30,31,26,.16); z-index:5; }
+  summary { list-style:none; cursor:pointer; display:grid; grid-template-columns:18px minmax(0,1fr) 53px; gap:7px; min-height:47px; align-items:center; padding:5px 7px 5px 6px; }
+  summary::-webkit-details-marker { display:none; }
+  summary:before { content:"+"; border:1px solid #aaa596; width:16px; height:16px; text-align:center; line-height:14px; color:#6c6e65; }
+  details[open] summary:before { content:"−"; background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .agent-main { min-width:0; }
+  .agent-title { display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .agent-id { color:#85877e; font-weight:400; font-size:9px; }
+  .agent-sub { color:#60635a; font-size:9px; display:flex; gap:7px; margin-top:4px; min-width:0; }
+  .agent-sub .model { max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .agent-sub .tool { color:#262924; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .agent-side { text-align:right; font-size:9px; color:#5f6259; }
+  .agent-side b { display:block; font-size:11px; color:#292b27; }
+  .status-line { height:2px; position:absolute; left:0; right:0; bottom:0; overflow:hidden; }
+  .running .status-line:after { content:""; display:block; width:38%; height:100%; background:var(--acid); animation:scan 2.6s linear infinite; }
+  @keyframes scan { from { transform:translateX(-100%); } to { transform:translateX(365%); } }
+
+  .detail { border-top:1px solid #aaa596; padding:8px; background:#eeeadf; }
+  .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:7px; }
+  .datum { border-left:1px solid #aaa596; padding-left:6px; color:#52554d; font-size:9px; }
+  .datum b { display:block; color:#22241f; font-size:10px; }
+  .block { margin-top:7px; }
+  .block-head { display:flex; justify-content:space-between; align-items:center; text-transform:uppercase; font-size:9px; font-weight:700; letter-spacing:.08em; margin-bottom:3px; }
+  .copy { border:0; padding:0 3px; background:#d5d0c2; color:#55584f; cursor:pointer; }
+  pre { margin:0; max-height:170px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; padding:7px; background:#181a16; color:#d9ddcd; border-left:3px solid #6f7466; font:9px/1.42 "Cascadia Mono","Courier New",monospace; }
+  pre.prompt { background:#dad6ca; color:#242620; border-color:#8a8e82; }
+  pre.result { color:#aeb4a4; }
+  .trunc { color:#ff966d; }
+
+  .future { position:absolute; z-index:2; left:18px; right:18px; bottom:17px; height:37px; border:1px dashed #85877d; background:repeating-linear-gradient(135deg,rgba(244,240,228,.68) 0 8px,rgba(205,201,190,.72) 8px 16px); display:flex; align-items:center; justify-content:center; gap:12px; color:#55584f; text-transform:uppercase; letter-spacing:.1em; font-size:9px; }
+  .future strong { background:var(--ink); color:var(--paper); padding:4px 7px; }
+
+  footer { background:var(--black); color:#969b90; display:flex; align-items:center; gap:18px; padding:0 18px; font-size:9px; letter-spacing:.05em; }
+  footer strong { color:#dddccd; }
+  .live { margin-left:auto; color:var(--acid); }
+  .live:before { content:""; display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--acid); margin-right:6px; box-shadow:0 0 0 3px rgba(200,255,61,.12); }
+
+  @media(max-width:900px){ header{grid-template-columns:1fr auto}.runline{display:none}.capacity{max-width:220px}.controlbar .metric:nth-of-type(n+4){display:none} }
+  @media(prefers-reduced-motion:reduce){ .running .status-line:after{animation:none;width:100%} }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="wordmark"><div class="mark"></div><div><h1>Phase lanes</h1><div class="sub">LOCAL / READ-ONLY / PROTOTYPE</div></div></div>
+    <div class="runline"><div class="run-title">workflow-inspector-capacity · run wf_93b11c</div><div class="run-meta"><span>started <strong>14:03:18</strong></span><span>wall <strong id="wall">06:42</strong></span><span>root <strong>candidate_prototypes</strong></span></div></div>
+    <div class="capacity"><b>Inspection capacity</b>12–20 agents meaningfully visible at once; up to ~50 total with lane scrolling.</div>
+  </header>
+  <div class="controlbar">
+    <div class="metric"><strong>24</strong><span>agents</span></div>
+    <div class="metric"><strong>7</strong><span>running</span></div>
+    <div class="metric"><strong>10</strong><span>done</span></div>
+    <div class="metric"><strong>2</strong><span>error</span></div>
+    <div class="metric"><strong>5</strong><span>queued</span></div>
+    <div class="metric"><strong>184k</strong><span>tokens</span></div>
+    <button class="quiet-button" id="collapse">collapse all</button>
+    <div class="legend"><span class="key"><i class="dot running"></i>running</span><span class="key"><i class="dot done"></i>done</span><span class="key"><i class="dot error"></i>error</span><span class="key"><i class="dot queued"></i>queued</span></div>
+  </div>
+  <main class="board-wrap" id="scrollArea">
+    <div class="board" id="board">
+      <svg id="edges" aria-label="Known dependency edges"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#74786d"/></marker></defs><g id="edgePaths"></g></svg>
+
+      <section class="lane" data-phase="discover">
+        <div class="lane-head"><div class="phase-index">01</div><div><div class="phase-name">Discover</div><div class="phase-desc">independent evidence gathering</div></div><div class="phase-count">6<small>6 done</small></div></div>
+        <div class="group parallel"><div class="group-label"><b>∥ parallel</b> source reconnaissance <span>6 branches</span></div><div class="agents" id="phase1"></div></div>
+      </section>
+
+      <section class="lane" data-phase="execute">
+        <div class="lane-head"><div class="phase-index">02</div><div><div class="phase-name">Prototype</div><div class="phase-desc">pipeline of candidate directions</div></div><div class="phase-count">8<small>5 active</small></div></div>
+        <div class="group pipeline"><div class="group-label"><b>→ pipeline</b> normalize → build <span>3 stages</span></div><div class="agents" id="phase2a"></div></div>
+        <div class="group nested"><div class="group-label"><b>⌁ nested workflow</b> visual variants <span>wf_c81a</span></div><div class="agents" id="phase2b"></div></div>
+      </section>
+
+      <section class="lane" data-phase="verify">
+        <div class="lane-head"><div class="phase-index">03</div><div><div class="phase-name">Review</div><div class="phase-desc">adversarial checks and selection</div></div><div class="phase-count">6<small>2 active</small></div></div>
+        <div class="group gate"><div class="group-label"><b>◇ gate</b> evidence threshold ≥ .72 <span>open</span></div><div class="agents" id="phase3a"></div></div>
+        <div class="group parallel"><div class="group-label"><b>∥ panel</b> capacity review <span>3 judges</span></div><div class="agents" id="phase3b"></div></div>
+      </section>
+
+      <section class="lane" data-phase="repair">
+        <div class="lane-head"><div class="phase-index">04</div><div><div class="phase-name">Repair + merge</div><div class="phase-desc">bounded retries, final synthesis</div></div><div class="phase-count">4<small>1 active</small></div></div>
+        <div class="group retry"><div class="group-label"><b>↻ retry 2/3</b> legibility remediation <span>backoff 8s</span></div><div class="agents" id="phase4a"></div></div>
+        <div class="group gate"><div class="group-label"><b>◇ final gate</b> synthesis <span>waiting</span></div><div class="agents" id="phase4b"></div></div>
+      </section>
+
+      <div class="future"><strong>Known execution frontier</strong><span>Beyond this line, scheduling order and additional agents are undetermined — not inferred.</span></div>
+    </div>
+  </main>
+  <footer><span><strong>AUTHORED PROMPTS</strong> preserved in full</span><span><strong>TOOL ARGS</strong> preserved in full</span><span><strong>RESULTS</strong> may be Pi-truncated</span><span>edge lines = known dependencies only</span><span class="live">observable now</span></footer>
+</div>
+<script>
+const agents = [
+ {id:'a01',slot:'phase1',n:'repo cartographer',s:'done',model:'gpt-5.4-mini',tok:'8.2k',age:'5m 48s',elapsed:'00:54',tool:'bash',role:'inventory',prompt:'Inspect the repository structure for workflow execution concepts. Identify phase, agent, tool-call, dependency, retry, gate, pipeline, and nested-workflow representations. Return a concise inventory with exact file paths. Do not modify files.',args:'{"command":"find src test -maxdepth 3 -type f | sort && rg -n \\"phase|pipeline|parallel|retry|gate|agent\\" src test","timeout":20}',result:'src/workflow.ts\nsrc/runtime/agent.ts\nsrc/runtime/groups.ts\n… 47 additional matches omitted\n[output truncated: 12,884 chars total]'},
+ {id:'a02',slot:'phase1',n:'event schema scout',s:'done',model:'deepseek-v4-flash',tok:'6.7k',age:'5m 31s',elapsed:'00:48',tool:'read',role:'event semantics',prompt:'Trace the observable event schema from emission through storage and rendering. Focus on which fields can support cumulative tokens, last successful tool call, and last observable activity. Cite exact types and note missing data honestly.',args:'{"path":"/home/will/projects/pi-dynamic-workflows/src/events.ts","offset":1,"limit":400}',result:'Event union includes agent.started, agent.delta, tool.started, tool.completed…\nNo explicit future schedule event exists.\n[output truncated: 8,210 chars total]'},
+ {id:'a03',slot:'phase1',n:'density researcher',s:'done',model:'qwen3.5-27b',tok:'7.9k',age:'5m 12s',elapsed:'01:07',tool:'web_search',role:'human factors',prompt:'Find high-trust evidence on simultaneous visual tracking limits in dense operational interfaces. Distinguish glanceable status from meaningful inspection. Return implications for a 1440×900 local workflow inspector; do not invent a universal numeric limit.',args:'{"queries":["operations dashboard visual density simultaneous monitoring human factors","progressive disclosure dense interface inspection limits"],"numResults":6,"workflow":"none"}',result:'Synthesis: use overview + progressive disclosure; preserve stable spatial position…\n[content fetched asynchronously; 6 sources]'},
+ {id:'a04',slot:'phase1',n:'fixture author',s:'done',model:'gpt-oss-20b',tok:'4.1k',age:'4m 57s',elapsed:'00:39',tool:'store_put',role:'data realism',prompt:'Create representative fixture descriptions for 24 workflow agents across four phases. Mix running, done, error, and queued states. Include plausible roles, model IDs, token totals, last successful tools, and activity ages.',args:'{"key":"fixture_agents","value":{"count":24,"phases":[6,8,6,4],"statuses":{"running":7,"done":11,"error":2,"queued":4}}}',result:'Stored value under fixture_agents'},
+ {id:'a05',slot:'phase1',n:'dependency mapper',s:'done',model:'glm-5p1-fast',tok:'5.3k',age:'4m 41s',elapsed:'00:44',tool:'bash',role:'graph structure',prompt:'Derive only dependencies that are knowable from the fixture orchestration structure. Separate explicit dependency edges from probable future scheduling. Return an edge list and an undetermined-boundary statement.',args:'{"command":"python scripts/print_fixture_graph.py --format edge-list","timeout":20}',result:'a01 -> a07\na02 -> a07\na04 -> a08\na07 -> a11\n… 9 lines omitted'},
+ {id:'a06',slot:'phase1',n:'language editor',s:'done',model:'minimax-m2p7',tok:'5.8k',age:'4m 20s',elapsed:'00:52',tool:'store_put',role:'domain language',prompt:'Define compact interface language for local read-only workflow inspection. Avoid implying hidden scheduler knowledge. Give labels for known dependencies, the observable frontier, activity age, orchestration groups, and result truncation.',args:'{"key":"interface_language","value":{"frontier":"Known execution frontier","unknown":"Undetermined — not inferred","activity":"Since observable activity"}}',result:'Stored value under interface_language'},
+
+ {id:'a07',slot:'phase2a',n:'lane normalizer',s:'done',model:'gpt-5.4-mini',tok:'9.4k',age:'3m 43s',elapsed:'01:15',tool:'store_get',role:'information model',prompt:'Normalize the discovery outputs into a phase-lane information model. Keep groups first-class: parallel, pipeline, retry, gate, and nested workflow. Preserve uncertainty instead of manufacturing future nodes.',args:'{"key":"fixture_agents"}',result:'{"count":24,"phases":[6,8,6,4],"statuses":{"running":7,"done":11,"error":2,"queued":4}}'},
+ {id:'a08',slot:'phase2a',n:'phase lanes prototype',s:'running',model:'gpt-5.5',tok:'18.7k',age:'3s',elapsed:'03:26',tool:'write',role:'UI direction',prompt:'Create one throwaway browser UI prototype for /home/will/projects/pi-dynamic-workflows. Build a dense phase-lane / operations-board direction for a 1440×900 viewport. Show about 24 fixture agents with expandable full authored prompts and full tool arguments. Results may use Pi-like truncation. Write only prototypes/workflow-visualizer/phase-lanes.html.',args:'{"path":"/home/will/projects/pi-dynamic-workflows/prototypes/workflow-visualizer/phase-lanes.html","content":"<!doctype html>\\n<html lang=\\"en\\">\\n<head>… complete HTML payload continues in tool event storage …</head>"}',result:'Tool call is in progress; no successful result yet.'},
+ {id:'a09',slot:'phase2a',n:'timeline prototype',s:'running',model:'kimi-k2p7-code',tok:'15.1k',age:'11s',elapsed:'03:17',tool:'read',role:'UI direction',prompt:'Build an alternate temporal-strip workflow inspector prototype. Emphasize causality and activity over lane density while preserving all required evidence. Keep it self-contained and local-only.',args:'{"path":"/home/will/projects/pi-dynamic-workflows/src/workflow.ts","offset":1,"limit":260}',result:'export async function workflow(…) {\n  // runtime implementation\n…\n[output truncated: 14,932 chars total]'},
+ {id:'a10',slot:'phase2a',n:'command table prototype',s:'error',model:'qwen3-coder-next',tok:'11.2k',age:'1m 08s',elapsed:'02:08',tool:'bash',role:'UI direction',prompt:'Build a command-table workflow inspector prototype that tests maximum scan density. It must preserve expandable full prompts and tool arguments and disclose uncertain future work.',args:'{"command":"python -m http.server 4173 --directory prototypes/workflow-visualizer","timeout":5}',result:'Error: address already in use\nProcess exited with code 1'},
+ {id:'a11',slot:'phase2b',n:'nested card composer',s:'running',model:'deepseek-v4-pro',tok:'12.3k',age:'7s',elapsed:'02:24',tool:'bash',role:'nested workflow',prompt:'Within nested workflow wf_c81a, compose compact agent rows that remain identifiable when embedded in a parent phase lane. Do not hide the nested workflow boundary.',args:'{"command":"cat > /tmp/nested-card-fragment.html <<\'EOF\'\n<section class=\"nested-workflow\" data-run=\"wf_c81a\">…</section>\nEOF\nwc -c /tmp/nested-card-fragment.html","timeout":10}',result:'2841 /tmp/nested-card-fragment.html'},
+ {id:'a12',slot:'phase2b',n:'edge router',s:'running',model:'gpt-oss-120b',tok:'10.8k',age:'16s',elapsed:'02:16',tool:'store_get',role:'dependency overlay',prompt:'Render known dependencies without suggesting that spatial proximity is causality. Use explicit edge data only. Mark nested crossings distinctly and leave future scheduling blank.',args:'{"key":"known_edges"}',result:'null'},
+ {id:'a13',slot:'phase2b',n:'evidence drawer',s:'done',model:'glm-5p2-fast',tok:'7.1k',age:'1m 24s',elapsed:'01:31',tool:'bash',role:'progressive disclosure',prompt:'Prototype expandable evidence sections for authored prompt, latest successful tool call, full arguments, and a potentially truncated result. Ensure keyboard-native expansion.',args:'{"command":"node scripts/render-evidence-fixture.mjs --agents 24 --native-details","timeout":20}',result:'Rendered 24 native <details> elements\nPrompt fields: 24/24 full\nTool arguments: 24/24 full'},
+ {id:'a14',slot:'phase2b',n:'activity ticker',s:'queued',model:'gpt-5.4-mini',tok:'0',age:'—',elapsed:'—',tool:'—',role:'time semantics',prompt:'Validate that elapsed time since last observable activity is labeled as an age, not execution duration. Update fixture ages once per second without implying server synchronization.',args:'No tool call yet.',result:'Queued; no result.'},
+
+ {id:'a15',slot:'phase3a',n:'evidence gate',s:'done',model:'gpt-5.4',tok:'10.2k',age:'1m 02s',elapsed:'01:43',tool:'store_get',role:'gate validator',prompt:'Evaluate candidate prototypes against required evidence fields. Pass only candidates with role, full prompt on expansion, model, cumulative tokens, latest successful tool call, and age since observable activity.',args:'{"key":"candidate_manifest"}',result:'phase-lanes: pending\ntimeline: pending\ncommand-table: failed'},
+ {id:'a16',slot:'phase3a',n:'uncertainty auditor',s:'running',model:'deepseek-r1',tok:'13.9k',age:'22s',elapsed:'01:37',tool:'read',role:'truthfulness',prompt:'Audit labels and graph marks for claims beyond observed events. Flag any implied future ordering, fabricated dependencies, or activity timestamps that cannot be distinguished from scheduler state.',args:'{"path":"/tmp/prototype-copy.txt","offset":1,"limit":500}',result:'Known execution frontier label is acceptable.\nAvoid “next” for queued agents unless scheduler emitted order.\n[output truncated: 6,230 chars total]'},
+ {id:'a17',slot:'phase3a',n:'accessibility pass',s:'error',model:'gemma-4-31b-it',tok:'6.6k',age:'49s',elapsed:'01:12',tool:'bash',role:'interaction check',prompt:'Check native keyboard access, focus visibility, contrast, reduced motion, and whether expanded evidence remains reachable at 1440×900. Report concrete failures only.',args:'{"command":"npx axe prototypes/workflow-visualizer/phase-lanes.html --exit","timeout":60}',result:'npm error: could not determine executable to run\nNo audit result produced.'},
+ {id:'a18',slot:'phase3b',n:'ops density judge',s:'running',model:'gpt-5.5',tok:'8.4k',age:'9s',elapsed:'01:04',tool:'fetch_content',role:'operations lens',prompt:'Judge whether an operator can scan 12–20 compact agents at once without losing phase and group context. Penalize ornamental cards, hidden status, and misleading capacity claims.',args:'{"url":"file:///home/will/projects/pi-dynamic-workflows/prototypes/workflow-visualizer/phase-lanes.html","prompt":"Assess scan density and hierarchy at 1440 by 900."}',result:'Local file extraction started.'},
+ {id:'a19',slot:'phase3b',n:'causality judge',s:'queued',model:'qwen3.5-397b',tok:'0',age:'—',elapsed:'—',tool:'—',role:'graph lens',prompt:'Judge whether known dependencies are legible while unknown future work remains explicitly undetermined. Distinguish orchestration containment from causal edges.',args:'No tool call yet.',result:'Queued; no result.'},
+ {id:'a20',slot:'phase3b',n:'detail judge',s:'queued',model:'minimax-m3',tok:'0',age:'—',elapsed:'—',tool:'—',role:'evidence lens',prompt:'Open several agent records and verify that authored prompts and tool arguments are complete, results are clearly truncated when shortened, and latest successful tool semantics are not confused with in-progress calls.',args:'No tool call yet.',result:'Queued; no result.'},
+
+ {id:'a21',slot:'phase4a',n:'contrast remediation',s:'done',model:'gpt-5.4-mini',tok:'5.9k',age:'34s',elapsed:'00:51',tool:'edit',role:'retry attempt 1',prompt:'Increase compact-row metadata contrast without increasing row height. Preserve the utilitarian paper-and-ink visual direction. Return the exact changed selectors.',args:'{"path":"prototypes/workflow-visualizer/phase-lanes.html","edits":[{"oldText":"color:#777","newText":"color:#60635a"}]}',result:'Applied 1 targeted replacement.'},
+ {id:'a22',slot:'phase4a',n:'edge remediation',s:'running',model:'kimi-k2p7-code',tok:'7.2k',age:'5s',elapsed:'00:46',tool:'read',role:'retry attempt 2',prompt:'Repair dependency edges after layout changes. Route lines between source and target cards using current viewport geometry. Keep the overlay non-interactive and redraw on resize and details toggles.',args:'{"path":"prototypes/workflow-visualizer/phase-lanes.html","offset":410,"limit":180}',result:'const edges = […]\nfunction drawEdges() { … }'},
+ {id:'a23',slot:'phase4b',n:'candidate synthesizer',s:'queued',model:'gpt-5.5',tok:'0',age:'—',elapsed:'—',tool:'—',role:'final synthesis',prompt:'Once all required reviews are observable, compare candidates and identify the strongest answer to the inspection-capacity question. Do not start from incomplete review evidence.',args:'No tool call yet.',result:'Blocked by a18, a19, and a20.'},
+ {id:'a24',slot:'phase4b',n:'completeness critic',s:'queued',model:'deepseek-v4-pro',tok:'0',age:'—',elapsed:'—',tool:'—',role:'completion audit',prompt:'Audit the final candidate against every explicit prototype requirement. Return missing requirements without padding. Treat uncertain future scheduling as unknown, never as a hidden queue.',args:'No tool call yet.',result:'Blocked by final synthesis.'}
+];
+
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+function resultMarkup(s){ return esc(s).replace(/\[output truncated:([^\]]+)\]/g,'<span class="trunc">[output truncated:$1]</span>'); }
+function render(a){
+  const successful = a.tool === '—' ? 'none yet' : a.tool;
+  return `<details class="agent ${a.s}" id="${a.id}"><summary><div class="agent-main"><div class="agent-title"><i class="dot ${a.s}"></i>${esc(a.n)} <span class="agent-id">${a.id}</span></div><div class="agent-sub"><span class="model">${esc(a.model)}</span><span>·</span><span class="tool">last ✓ ${esc(successful)}</span></div></div><div class="agent-side"><b>${esc(a.tok)}</b><span>${esc(a.age)} ago</span></div></summary><div class="detail"><div class="detail-grid"><div class="datum">ROLE<b>${esc(a.role)}</b></div><div class="datum">STATUS<b>${esc(a.s)}</b></div><div class="datum">CUMULATIVE TOKENS<b>${esc(a.tok)}</b></div><div class="datum">AGENT ELAPSED<b>${esc(a.elapsed)}</b></div><div class="datum">MODEL<b>${esc(a.model)}</b></div><div class="datum">SINCE OBSERVABLE ACTIVITY<b>${esc(a.age)}${a.age==='—'?'':' ago'}</b></div></div><div class="block"><div class="block-head"><span>Full authored prompt</span><button class="copy" data-copy="prompt">copy</button></div><pre class="prompt">${esc(a.prompt)}</pre></div><div class="block"><div class="block-head"><span>Latest successful tool · ${esc(successful)}</span></div><pre>${esc(a.args)}</pre></div><div class="block"><div class="block-head"><span>Tool result ${a.result.includes('truncated')?'· truncated by Pi':''}</span></div><pre class="result">${resultMarkup(a.result)}</pre></div></div><div class="status-line"></div></details>`;
+}
+agents.forEach(a=>document.getElementById(a.slot).insertAdjacentHTML('beforeend',render(a)));
+
+const edges=[['a01','a07'],['a02','a07'],['a04','a08'],['a05','a12'],['a07','a11'],['a08','a15'],['a11','a15'],['a12','a16'],['a13','a18'],['a15','a21'],['a16','a22'],['a18','a23'],['a22','a23'],['a23','a24']];
+function drawEdges(){
+ const board=document.getElementById('board'), base=board.getBoundingClientRect(), g=document.getElementById('edgePaths');
+ g.innerHTML='';
+ edges.forEach(([from,to])=>{ const a=document.getElementById(from),b=document.getElementById(to); if(!a||!b)return; const r1=a.getBoundingClientRect(),r2=b.getBoundingClientRect(); const x1=r1.right-base.left,y1=r1.top-base.top+Math.min(24,r1.height/2),x2=r2.left-base.left,y2=r2.top-base.top+Math.min(24,r2.height/2); const bend=Math.max(16,(x2-x1)*.42); const p=document.createElementNS('http://www.w3.org/2000/svg','path'); p.setAttribute('d',`M${x1},${y1} C${x1+bend},${y1} ${x2-bend},${y2} ${x2},${y2}`); p.setAttribute('class','edge'+((from==='a07'&&to==='a11')?' nested':'')); g.appendChild(p); });
+ const svg=document.getElementById('edges'); svg.setAttribute('width',board.scrollWidth); svg.setAttribute('height',board.scrollHeight);
+}
+requestAnimationFrame(drawEdges); window.addEventListener('resize',drawEdges);
+document.querySelectorAll('details').forEach(d=>d.addEventListener('toggle',()=>requestAnimationFrame(drawEdges)));
+document.getElementById('collapse').addEventListener('click',()=>{document.querySelectorAll('details[open]').forEach(d=>d.open=false);});
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-copy]'); if(!b)return; const text=b.closest('.block').querySelector('pre').textContent; navigator.clipboard?.writeText(text); const old=b.textContent;b.textContent='copied';setTimeout(()=>b.textContent=old,900); });
+</script>
+</body>
+</html>

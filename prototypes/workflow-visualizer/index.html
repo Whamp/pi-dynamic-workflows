@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workflow Visualizer — Prototype Comparison</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f0eee5;
+      --muted: #9b9d96;
+      --ground: #111311;
+      --panel: #1a1d1a;
+      --rule: #363b36;
+      --signal: #d5ff4a;
+      --signal-ink: #171b0d;
+      --frame-width: 1440px;
+      --frame-height: 900px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; min-height: 100%; }
+
+    body {
+      background:
+        linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px),
+        var(--ground);
+      background-size: 24px 24px;
+      color: var(--ink);
+      font-family: "IBM Plex Mono", "Cascadia Mono", "Courier New", monospace;
+    }
+
+    a { color: inherit; }
+
+    .shell {
+      width: min(100% - 40px, 1560px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 28px 0 30px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 22px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(430px, 660px);
+      gap: 40px;
+      align-items: end;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .kicker,
+    .criterion-label,
+    .candidate-number {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .kicker { margin-bottom: 10px; color: var(--signal); }
+
+    h1 {
+      margin: 0;
+      max-width: 780px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 4.2vw, 64px);
+      font-weight: 400;
+      line-height: .93;
+      letter-spacing: -.045em;
+    }
+
+    .criterion {
+      padding: 15px 17px 16px;
+      border-left: 4px solid var(--signal);
+      background: #1c2019;
+    }
+
+    .criterion-label { margin-bottom: 7px; color: var(--signal); }
+
+    .criterion p {
+      margin: 0;
+      max-width: 62ch;
+      color: #d8d9d1;
+      font: 15px/1.5 Georgia, "Times New Roman", serif;
+    }
+
+    .criterion strong { color: #fff; }
+
+    .candidates {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .candidate {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(260px, 1fr);
+      border: 1px solid var(--rule);
+      background: var(--panel);
+      box-shadow: 0 18px 45px rgba(0,0,0,.2);
+      transition: border-color 160ms ease, transform 160ms ease;
+    }
+
+    .candidate:hover {
+      border-color: #697166;
+      transform: translateY(-2px);
+    }
+
+    .candidate-head {
+      min-height: 86px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: start;
+      padding: 17px 17px 15px;
+    }
+
+    .candidate-number { margin-bottom: 7px; color: var(--muted); }
+
+    h2 {
+      margin: 0;
+      font: 400 25px/1 Georgia, "Times New Roman", serif;
+      letter-spacing: -.02em;
+    }
+
+    .open-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid #5c635a;
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-decoration: none;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .open-link::after { content: "↗"; color: var(--signal); font-size: 14px; }
+    .open-link:hover, .open-link:focus-visible { outline: none; background: var(--signal); color: var(--signal-ink); border-color: var(--signal); }
+    .open-link:hover::after, .open-link:focus-visible::after { color: var(--signal-ink); }
+
+    .question {
+      min-height: 48px;
+      margin: 0;
+      padding: 0 17px 15px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .preview {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      border-top: 1px solid var(--rule);
+      background: #0b0d0b;
+    }
+
+    .preview iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--frame-width);
+      height: var(--frame-height);
+      border: 0;
+      transform-origin: top left;
+      transform: scale(var(--preview-scale, .3));
+      pointer-events: none;
+    }
+
+    .preview-link {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: block;
+    }
+
+    .preview-link:focus-visible { outline: 3px solid var(--signal); outline-offset: -3px; }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    footer strong { color: var(--ink); font-weight: 500; }
+
+    @media (max-width: 1050px) {
+      .shell { width: min(100% - 28px, 760px); }
+      header { grid-template-columns: 1fr; gap: 24px; }
+      .candidates { grid-template-columns: 1fr; }
+      .candidate { grid-template-rows: auto auto 440px; }
+    }
+
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 20px, 760px); padding-top: 18px; }
+      .candidate-head { grid-template-columns: 1fr; }
+      .open-link { justify-self: start; }
+      footer { flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .candidate { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <div class="kicker">Workflow visualizer / comparison shell</div>
+        <h1>Three ways to see work in flight.</h1>
+      </div>
+      <aside class="criterion" aria-label="Evaluation criterion">
+        <div class="criterion-label">The test · 1440 × 900</div>
+        <p>Which candidate preserves <strong>simultaneous meaningful visibility</strong> across a busy workflow? This is not a contest for maximum data capacity.</p>
+      </aside>
+    </header>
+
+    <section class="candidates" aria-label="Workflow visualizer candidates">
+      <article class="candidate">
+        <div class="candidate-head">
+          <div>
+            <div class="candidate-number">Candidate 01</div>
+            <h2>Phase Lanes</h2>
+          </div>
+          <a class="open-link" href="phase-lanes.html" target="_blank" rel="noopener">Open full size</a>
+        </div>
+        <p class="question">Can phase columns keep agent identity, grouping, and status legible at once?</p>
+        <div class="preview" aria-hidden="true">
+          <iframe src="phase-lanes.html" title="Phase Lanes preview" loading="eager"></iframe>
+          <a class="preview-link" href="phase-lanes.html" target="_blank" rel="noopener" tabindex="-1" aria-label="Open Phase Lanes full size"></a>
+        </div>
+      </article>
+
+      <article class="candidate">
+        <div class="candidate-head">
+          <div>
+            <div class="candidate-number">Candidate 02</div>
+            <h2>Focus / Context</h2>
+          </div>
+          <a class="open-link" href="focus-context.html" target="_blank" rel="noopener">Open full size</a>
+        </div>
+        <p class="question">Can one focused agent remain detailed without losing the surrounding run?</p>
+        <div class="preview" aria-hidden="true">
+          <iframe src="focus-context.html" title="Focus / Context preview" loading="eager"></iframe>
+          <a class="preview-link" href="focus-context.html" target="_blank" rel="noopener" tabindex="-1" aria-label="Open Focus / Context full size"></a>
+        </div>
+      </article>
+
+      <article class="candidate">
+        <div class="candidate-head">
+          <div>
+            <div class="candidate-number">Candidate 03</div>
+            <h2>Execution River</h2>
+          </div>
+          <a class="open-link" href="execution-river.html" target="_blank" rel="noopener">Open full size</a>
+        </div>
+        <p class="question">Can temporal flow expose pressure and dependencies while agents stay distinct?</p>
+        <div class="preview" aria-hidden="true">
+          <iframe src="execution-river.html" title="Execution River preview" loading="eager"></iframe>
+          <a class="preview-link" href="execution-river.html" target="_blank" rel="noopener" tabindex="-1" aria-label="Open Execution River full size"></a>
+        </div>
+      </article>
+    </section>
+
+    <footer>
+      <span>Click any preview or <strong>Open full size</strong> to inspect the candidate.</span>
+      <span>Compare comprehension at the target viewport—not how much can be packed beyond it.</span>
+    </footer>
+  </main>
+
+  <script>
+    const previews = document.querySelectorAll('.preview');
+
+    function sizePreviews() {
+      for (const preview of previews) {
+        const scale = preview.clientWidth / 1440;
+        preview.style.setProperty('--preview-scale', String(scale));
+      }
+    }
+
+    sizePreviews();
+    window.addEventListener('resize', sizePreviews, { passive: true });
+  </script>
+</body>
+</html>

@@ -9,8 +9,8 @@ Keep the `workflow` and planned `workflow_discover` definitions active and byte-
 Use three layers:
 
 1. **Static selection and basic-use contract:** one concrete Available-tools line and three short guidelines. This is the only guidance available when the parent selects `workflow` without a recognized trigger.
-2. **Triggered control block:** append a small, versioned block to the submitted conversation message when the configured trigger, `/workflows run`, or standing effort mode explicitly selects workflow execution. Do not inject a second authoring manual.
-3. **Schema, parser, runtime, diagnostics, and docs:** place syntax, defaults, advanced helpers, phases, budgets, discovery, and nesting at the seam that can state or enforce them.
+2. **Triggered guidance profile:** append a versioned block to the submitted conversation message when the configured trigger, `/workflows run`, or standing effort mode explicitly selects workflow execution. The default `detailed` profile adds six compact craft rules; the opt-in `minimal` profile adds only the selection marker. Neither profile repeats the current 24-bullet manual.
+3. **Schema, parser, runtime, diagnostics, and docs:** place syntax, defaults, full helper signatures, phases, budgets, discovery, and nesting at the seam that can state or enforce them.
 
 The configured trigger is the strongest per-message intent signal. With `keywordTriggerWord: "pi-workflows"`, only the case-insensitive literal term `pi-workflows` arms keyword mode. The words `workflow`, `workflows`, and `pi-workflow` do not. A generic occurrence of the tool's name is not consent to delegate.
 
@@ -46,27 +46,46 @@ Run JavaScript that delegates substantive work to one or more subagents through 
 
 ## Triggered-message contract
 
+Read `guidanceProfile` once at session start. Its default is `"detailed"`; `"minimal"` is an explicit user opt-in. Snapshot the visible `agentType` projection at the same boundary for detailed guidance. Neither setting changes prompt metadata or tool definitions.
+
 Use one pure builder for all model-mediated explicit modes:
 
 ```ts
 type WorkflowSelectionSource = "keyword" | "command" | "effort-high" | "effort-ultra";
+type WorkflowGuidanceProfile = "detailed" | "minimal";
 
 buildTriggeredWorkflowMessage({
   originalText,
   source,
   configuredTriggerWord,
+  guidanceProfile,
+  agentTypesSnapshot,
 }): string
 ```
 
-The result is the original request followed once by this control block:
+Both profiles append the original request followed once by this control block:
 
 ```text
 ---
 [pi-dynamic-workflows selection v1]
 source: keyword
+profile: minimal
 configured-trigger: pi-workflows
 The user explicitly selected `workflow` for this request. Call `workflow`.
-Give every subagent a substantive, self-contained task. One subagent is valid when one is enough; do not create subagents for trivial direct operations.
+```
+
+The `detailed` profile changes `profile` and appends six craft groups:
+
+```text
+Authoring craft:
+- Shape work around natural independent units. One file or one subagent is valid when substantive; do not delegate trivial direct operations.
+- Use `pipeline()` for independent per-item stages. Use a `parallel()` barrier only when the next step needs the whole set for comparison, deduplication, merging, or a count-based decision.
+- Preserve failed item ids before filtering. Treat `null` as missing coverage, distinguish incomplete from clean, and bound retries to recoverable failures.
+- Use schemas for programmatic handoffs and JavaScript for joins, counts, and ranking. Add a synthesis agent only when the deliverable needs prose or cross-item judgment.
+- Give every subagent a self-contained prompt with paths, constraints, evidence requirements, and an output contract.
+- Bound loops and scale, expose dropped or sampled work, pilot expensive transformations, and use worktrees only when concurrent edits would conflict and a merge path exists.
+Optional helpers when their deciding test fits: `verify`, `judgePanel`, `loopUntilDry`, `completenessCheck`.
+Available agentTypes for this session: <sorted name and optional description projection, or `none`>.
 ```
 
 Contract rules:
@@ -74,10 +93,11 @@ Contract rules:
 1. `source: keyword` is emitted only after the enabled configured matcher succeeds and one-shot suppression has not consumed the submission. With `pi-workflows`, generic `workflow` or `workflows` text does not qualify.
 2. `/workflows run <prompt>` emits `source: command` through the same builder. It does not depend on keyword matching.
 3. `/effort high`, `/effort ultra`, and `/ultracode` emit the matching effort source for substantive requests. They are standing opt-ins, not keyword matches.
-4. The block carries no model names, tier assignments, `agentType` names, filesystem paths, helper catalog, or machine-specific data.
-5. The builder appends the block to a user or custom conversation message. It never returns `systemPrompt`, calls `setActiveTools`, re-registers a tool, or changes a tool definition.
-6. The block is persisted with the conversation message, so retries, compaction input, and session inspection retain the reason the workflow was selected.
-7. The static guidelines remain authoritative for return, `null`, labels, routing, and structured output. The triggered block does not duplicate them.
+4. `minimal` carries no catalog or craft text. `detailed` may carry only the session-snapshotted `agentType` names and optional descriptions. Neither profile carries role prompts, tool policies, bound models, model names, tier assignments, filesystem paths, or full helper signatures.
+5. If the `agentType` snapshot is partial or unavailable, the detailed block reports that state and directs the parent to `workflow_discover`; it never renders a silently empty success. Exact model discovery always uses `workflow_discover`.
+6. The builder appends the block to a user or custom conversation message. It never returns `systemPrompt`, calls `setActiveTools`, re-registers a tool, or changes a tool definition.
+7. The block is persisted with the conversation message, so retries, compaction input, and session inspection retain the reason and profile used.
+8. The static guidelines remain authoritative for return, `null`, labels, routing, and structured output. The triggered profile adds craft; it does not duplicate the core contract.
 
 The current forcing text says every request must fan out and that even a small task must launch an agent. Replace those claims. They conflict with valid one-agent deployments and encourage frivolous delegation.
 
@@ -85,10 +105,10 @@ The current forcing text says every request must fan out and that even a small t
 
 | Entry path | Parent authors a script? | Guidance available before authoring | Required treatment |
 | --- | --- | --- | --- |
-| Configured interactive/print trigger | Yes | Static prompt/schema plus transformed request | Exact configured matcher; append the `keyword` control block; do not change active tools. |
+| Configured interactive/print trigger | Yes | Static prompt/schema plus transformed request | Exact configured matcher; append the selected `minimal` or `detailed` keyword block; do not change active tools. |
 | Backspace-suppressed keyword submission | Maybe | Static prompt/schema only | Do not append the block. Suppression means the trigger did not select workflow. |
-| `/workflows run <prompt>` | Yes | Static prompt/schema plus a custom message | Build the same block with `source: command`. This path bypasses the normal `input` event and `before_agent_start`. |
-| Standing `/effort` or `/ultracode` | Yes | Static prompt/schema plus transformed request | Append the matching effort block only for the existing substantive-request predicate. |
+| `/workflows run <prompt>` | Yes | Static prompt/schema plus a custom message | Build the same selected-profile block with `source: command`. This path bypasses the normal `input` event and `before_agent_start`. |
+| Standing `/effort` or `/ultracode` | Yes | Static prompt/schema plus transformed request | Append the matching selected-profile effort block only for the existing substantive-request predicate. |
 | Ordinary natural-language request | Maybe | Static prompt/schema | The parent may select `workflow` for an explicit substantive delegation request. Generic `workflow(s)` text is not a trigger when the configured word is `pi-workflows`. |
 | RPC prompt | Maybe | Static prompt/schema | The current keyword hook ignores `source: "rpc"`; use explicit delegation language or `/workflows run`. Do not pretend the interactive configured trigger fired. |
 | Parent calls `workflow` autonomously | Yes | Static prompt/schema only | This is why return/`null` and inner `agent()` guidance cannot live only in the triggered block. |
@@ -101,7 +121,7 @@ Pi 0.80.6 checks extension commands before the `input` event. Its `sendCustomMes
 
 ## Placement matrix
 
-“Schema” means the stable provider-visible `workflow` description and parameter schema. “Runtime” distinguishes current behavior from validation that the implementation should add. “Triggered” means the small control block above, not a copy of the current guideline catalog.
+“Schema” means the stable provider-visible `workflow` description and parameter schema. “Runtime” distinguishes current behavior from validation that the implementation should add. “Detailed” means one of the six compact triggered craft groups above, not a copy of the current guideline catalog.
 
 | # | Current instruction | Needed before selection? | Schema carries it? | Runtime can enforce it? | Verdict |
 | ---: | --- | :---: | :---: | --- | --- |
@@ -110,36 +130,36 @@ Pi 0.80.6 checks extension commands before the `input` event. Its `sendCustomMes
 | 3 | Require the exact first `export const meta` statement and non-empty name/description. | No | **Yes** | **Current:** Acorn parse plus `validateMeta`. | **ENFORCE.** Keep in schema and parser; remove guideline. |
 | 4 | Plain JavaScript; no TypeScript, imports, `require`, filesystem, clocks, or randomness. | No | Partly | **Current:** JavaScript parser/VM reject unavailable syntax/globals; Date/Math guards reject accidental nondeterminism. | **ENFORCE.** Keep parser/runtime diagnostics; remove guideline. |
 | 5 | List globals and require at least one `agent()` call. | No | **Yes** | **Partial:** globals are fixed; the foreground tool rejects zero agents, but `runWorkflow` itself does not, so direct/background paths differ. | **ENFORCE at `runWorkflow`.** Keep globals and minimum in schema; remove guideline. |
-| 6 | Catalog `verify`, `judgePanel`, `loopUntilDry`, and `completenessCheck`. | No | No | Runtime provides them but cannot choose a quality strategy. | **MOVE to docs/saved examples.** Do not include in the default triggered block. |
-| 7 | Require exact phase switching and explain empty/misassigned phase UI. | No | Phase declaration only | **Can add:** compare declared phases and actual assignments at the common runtime seam. | **ENFORCE/diagnose at runtime.** Keep detailed UI advice in docs. |
+| 6 | Catalog `verify`, `judgePanel`, `loopUntilDry`, and `completenessCheck`. | No | No | Runtime provides them but cannot choose a quality strategy. | **MOVE to detailed/on demand.** Detailed names them as optional; docs own signatures and deciding tests. |
+| 7 | Require exact phase switching and explain empty/misassigned phase UI. | No | Phase declaration only | **Can add:** compare declared phases and actual assignments at the common runtime seam. | **MOVE to detailed + ENFORCE/diagnose.** Keep UI detail in docs. |
 | 8 | Do not set token/time limits unless the user requests them. | No | **Yes**: defaults and omission semantics | **Current:** omitted values stay unbounded/configured. | **REMOVE guideline.** Parameter descriptions own it. |
-| 9 | Explain run/phase budgets, `retry`, `gate`, and graceful degradation. | No | Tool-level caps only | Runtime enforces caps and helper semantics, not author strategy. | **MOVE to docs/saved examples.** Surface precise errors at exhaustion. |
+| 9 | Explain run/phase budgets, `retry`, `gate`, and graceful degradation. | No | Tool-level caps only | Runtime enforces caps and helper semantics, not author strategy. | **MOVE to detailed/on demand.** Detailed says bound loops/scale; docs own recipes; runtime owns exhaustion errors. |
 | 10 | Prefer decomposable work; reject quick reads/edits. | **Yes** | Capability only | No; task substance is semantic. | **KEEP, merge into #1.** Allow one substantive subagent; reject trivial delegation. |
 | 11 | `parallel()` takes thunks, not promises; results preserve input order. | No | **Yes** | **Current:** validates array/functions; `Promise.all` preserves input order. | **ENFORCE.** Keep one positive form in schema and the runtime error; remove guideline. |
-| 12 | Explain `pipeline()` stage ordering and arguments. | No | Names `pipeline` only | **Current:** validates input/stages and supplies `(previous, original, index)`. | **MOVE to docs/runtime errors.** Do not send on every trigger. |
+| 12 | Explain `pipeline()` stage ordering and arguments. | No | Names `pipeline` only | **Current:** validates input/stages and supplies `(previous, original, index)`. | **MOVE to detailed/docs.** Detailed carries the pipeline-vs-barrier deciding test; docs own signatures. |
 | 13 | Give each agent a unique short label. | No | No; outer schema cannot describe inner `agent()` options | Runtime supplies a default label but does not ensure useful uniqueness. | **KEEP compressed** as “label each `agent()`.” Do not retain length rules/examples. |
-| 14 | Use low concurrency/retries for unstable transports; inspect `null` after exhaustion. | No | Controls/defaults only | **Current:** clamps concurrency, retries recoverable failures, returns `null` after exhaustion. | **SPLIT.** Remove transport advice; merge the `null` contract into #15. |
+| 14 | Use low concurrency/retries for unstable transports; inspect `null` after exhaustion. | No | Controls/defaults only | **Current:** clamps concurrency, retries recoverable failures, returns `null` after exhaustion. | **SPLIT.** Merge `null` into #15; move bounded recoverable-retry craft to detailed/docs. |
 | 15 | Recoverable failed branches return `null`; check them. | No | No | **Current behavior**, but handling is script semantics. | **KEEP compressed.** Schema-only Sol and Luna treated `null` as evidence without this guidance. |
 | 16 | Add a synthesis agent and return compact JSON with `ok`/`verdict`. | No | No | **Can add:** reject non-JSON-serializable or missing final results. Runtime cannot require one synthesis strategy. | **SPLIT.** Keep only JSON-serializable `return`; move synthesis/field style to examples. |
-| 17 | Prescribe finder → verify → merge. | No | No | No; it is a strategy. | **MOVE to docs/saved examples.** Do not include in default trigger guidance. |
-| 18 | Give each subagent a substantive, self-contained task; prefer fewer high-level agents. | Selection half only | No | No; prompt quality is semantic. | **SPLIT.** Merge “substantive” into #1; put “self-contained” in the triggered block; keep strategy examples in docs. |
+| 17 | Prescribe finder → verify → merge. | No | No | No; it is a strategy. | **MOVE to detailed/docs, rewrite.** Verification is conditional; it is not the default topology. |
+| 18 | Give each subagent a substantive, self-contained task; prefer fewer high-level agents. | Selection half only | No | No; prompt quality is semantic. | **SPLIT.** Merge “substantive” into #1; move natural work-unit and self-contained-prompt craft to detailed. One file can be correct. |
 | 19 | Use plain JSON Schema in `opts.schema`. | No | No; outer schema cannot describe the inner object | **Current:** structured output is validated against the supplied schema and repaired or failed. | **KEEP compressed.** Schema-only parents omitted or misused the inner contract. |
 | 20 | Explain tiers/exact model precedence and inject every available model. | No | No | **Partial:** routing precedence works; invalid tier names currently fall back instead of failing. | **SPLIT.** Keep only `small`/`medium`/`big` and user-named exact model guidance; **remove catalog**; validate tier names at runtime. |
-| 21 | Explain `agentType` and inject all discovered names/descriptions. | No | Planned discovery tool describes the interface | **Must add:** unknown `agentType` should fail before launch instead of silently falling back. | **MOVE to `workflow_discover`; ENFORCE stale names.** No trigger block catalog. |
-| 22 | Do not assume subagents have parent context; include paths/context. | No | No | No; context sufficiency is semantic. | **MOVE to triggered block** as “self-contained task,” with full examples in docs. |
+| 21 | Explain `agentType` and inject all discovered names/descriptions. | No | Planned discovery tool describes the interface | **Must add:** unknown `agentType` should fail before launch instead of silently falling back. | **SPLIT.** Detailed gets the session-snapshotted name/description projection; minimal omits it; autonomous/exact refresh uses `workflow_discover`; runtime fails stale names. |
+| 22 | Do not assume subagents have parent context; include paths/context. | No | No | No; context sufficiency is semantic. | **MOVE to detailed** as the self-contained-prompt craft group; docs own examples. |
 | 23 | Explain background default, delayed delivery, and `background: false`. | No | **Yes** | **Current:** defaults true and branches on false. | **REMOVE guideline.** Keep concise parameter description and result text. |
-| 24 | Explain saved-workflow nesting and global caps. | No | No | **Current:** one-level depth and shared limiter/count/budget are enforced. | **MOVE to docs/runtime errors.** Do not advertise on every trigger. |
+| 24 | Explain saved-workflow nesting and global caps. | No | No | **Current:** one-level depth and shared limiter/count/budget are enforced. | **MOVE to detailed/on demand + runtime errors.** Do not include full nesting rules in either core prompt. |
 
 ## Delivery mechanisms considered
 
 | Mechanism | Cache behavior | Coverage | Verdict |
 | --- | --- | --- | --- |
-| Existing `input` transformation | Appends variable text in the new user message; system prompt and tools stay stable. | Configured interactive/print keyword and effort modes. | **Use.** Remove its active-tool save/add/restore behavior. |
-| Shared builder used by `/workflows run` | Appends variable text in a custom conversation message. | Explicit command path, including the path that bypasses `input` and `before_agent_start`. | **Use.** |
+| Existing `input` transformation | Appends variable text in the new user message; system prompt and tools stay stable. | Configured interactive/print keyword and effort modes; carries the session's selected guidance profile. | **Use.** Remove its active-tool save/add/restore behavior. |
+| Shared builder used by `/workflows run` | Appends variable text in a custom conversation message. | Explicit command path, including the path that bypasses `input` and `before_agent_start`; carries the same selected profile. | **Use.** |
 | `before_agent_start` appended custom message | Cache-safe when it returns `message` only. Returning `systemPrompt` is not. | Ordinary prompt path only; misses `/workflows run` and cannot help autonomous same-turn selection. | **Do not use as source of truth.** A later presentation-only hook may consume the same marker, but the marker must already be in the message. |
 | `tool_call` hook or tool execution validation | Adds no prompt-prefix churn; failures return after the script has been authored. | Every model-mediated `workflow` call. | **Use for enforcement/diagnostics**, not selection guidance. |
 | Stable provider-visible schema | Stable prefix when byte-identical. | Every parent-authored call, including autonomous selection. | **Use for syntax and outer parameters.** |
-| Stable `workflow_discover` result | Definition remains static; catalog arrives as an appended tool result. | Explicit model/`agentType` discovery. | **Use for catalogs only.** |
+| Stable `workflow_discover` result | Definition remains static; refreshed catalog arrives as an appended tool result. | Exact model discovery, autonomous `agentType` selection, and refresh after a partial/stale detailed snapshot. | **Use.** Detailed may include only its accepted session snapshot. |
 | Skill or repository docs | Content arrives after an explicit read; skill descriptions still occupy a small static list entry. | Advanced authoring when `read` exists; unavailable in some tool-restricted deployments. | **Use for optional recipes, never required correctness.** |
 | Dynamic system prompt, lazy guideline getter, or trigger-time tool activation | Changes the prefix or tool list; fallback providers lose cache reuse. | Recognized paths only. | **Reject.** |
 
@@ -180,14 +200,16 @@ OpenAI's prompt-caching guidance requires an exact shared prefix and recommends 
 
 1. The extension registers and activates `workflow` and `workflow_discover` before the first provider request. Their provider-visible definitions and prompt metadata remain byte-identical for the session.
 2. Trigger handling never calls `setActiveTools`, `registerTool`, or returns a modified `systemPrompt`.
-3. With `keywordTriggerWord: "pi-workflows"`, exact case-insensitive `pi-workflows` input gets one `keyword` block; `workflow`, `workflows`, `pi-workflow`, slash commands with similar names, disabled triggering, and one-shot suppression do not.
-4. `/workflows run` and effort modes use the same builder with the correct source. Tests prove `/workflows run` receives the block despite bypassing `input` and `before_agent_start`.
-5. The static selection text says one or more substantive subagents. Tests cover one valid substantive agent and reject a zero-agent workflow at the common runtime seam.
-6. Runtime tests cover parser metadata, forbidden/nondeterministic constructs, thunk validation, phase diagnostics, final JSON-serializable result validation, tier enum validation, and unknown/stale `agentType` failure.
-7. Provider-context tests capture at least one untriggered and one triggered request and assert byte equality for the system prompt and serialized tools. They also assert that only the newest triggered message differs.
-8. The rendered static contribution stays at or below 700 UTF-8 bytes. The proposed four lines measure 625 bytes.
-9. No concrete model, tier assignment, `agentType` name, or machine path appears in static prompt text, either tool definition, or the trigger block.
-10. Saved and bundled workflows still run without parent guidance and receive the same common runtime validation as tool-authored workflows.
+3. `guidanceProfile` defaults to `detailed`, supports explicit `minimal`, and is snapshotted once per session without changing prompt metadata or tools.
+4. With `keywordTriggerWord: "pi-workflows"`, exact case-insensitive `pi-workflows` input gets one selected-profile `keyword` block; `workflow`, `workflows`, `pi-workflow`, slash commands with similar names, disabled triggering, and one-shot suppression do not.
+5. `/workflows run` and effort modes use the same builder with the correct source and profile. Tests prove `/workflows run` receives the block despite bypassing `input` and `before_agent_start`.
+6. Minimal contains only the selection marker. Detailed contains the six craft groups, optional helper names, and the sorted session-snapshotted `agentType` name/description projection with explicit ok/empty/partial/error state.
+7. The static selection text says one or more substantive subagents. Tests cover one valid substantive agent and reject a zero-agent workflow at the common runtime seam.
+8. Runtime tests cover parser metadata, forbidden/nondeterministic constructs, thunk validation, phase diagnostics, final JSON-serializable result validation, tier enum validation, and unknown/stale `agentType` failure.
+9. Provider-context tests capture untriggered, minimal-triggered, and detailed-triggered requests and assert byte equality for the system prompt and serialized tools. They assert that only the newest triggered message differs.
+10. The rendered static contribution stays at or below 700 UTF-8 bytes. The proposed four lines measure 625 bytes.
+11. No concrete model, tier assignment, role prompt, tool policy, or machine path appears in static prompt text, either tool definition, or either profile. Minimal contains no `agentType` names; detailed may contain only snapshotted names/descriptions.
+12. Saved and bundled workflows still run without parent guidance and receive the same common runtime validation as tool-authored workflows.
 
 ## Evidence ledger
 
@@ -211,11 +233,12 @@ Provider-level cache sources:
 - [OpenAI: Prompt Caching in the API](https://openai.com/index/api-prompt-caching/)
 - [OpenAI: Unrolling the Codex agent loop](https://openai.com/index/unrolling-the-codex-agent-loop/)
 
-Prior project evidence:
+Prior and concurrent project evidence:
 
 - [What the workflow schema teaches parent models](workflow-schema-comprehension.md)
 - [Cache-safe on-demand workflow discovery](cache-safe-workflow-discovery.md)
 - [Minimal always-on workflow prompt and size budgets](minimal-workflow-prompt-and-budgets.md)
+- [Claude Code dynamic-workflow provenance and authoring patterns](claude-code-dynamic-workflow-patterns.md)
 
 ### Proof commands
 

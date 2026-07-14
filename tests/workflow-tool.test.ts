@@ -72,7 +72,7 @@ test("createWorkflowTool routes normal work through tiers and reserves exact mod
 
   assert.match(all, /opts\.tier/);
   assert.match(all, /small.+medium.+big/s);
-  assert.match(all, /opts\.model only when the user (names|supplies)/i);
+  assert.match(all, /opts\.model only when the user names/i);
 });
 
 test("createWorkflowTool promptGuidelines keep budget and timeout unbounded by default", () => {

@@ -12,6 +12,8 @@ import {
 import { createWorkflowTool } from "../src/workflow-tool.js";
 import { withFakeHomeAsync } from "./helpers/fake-home.js";
 
+// Exact post-change measurements: ratchet only after reviewing a new accepted form.
+// The prompt baseline intentionally uses an empty agentType registry so user configuration cannot alter it.
 const RENDERED_PROMPT_BUDGET_BYTES = 6_500;
 const TOOL_DEFINITION_BUDGET_BYTES = 2_204;
 

@@ -581,6 +581,9 @@ export class WorkflowManager extends EventEmitter {
       lease,
     };
     this.runs.set(runId, managed);
+    // Persist before notifying renderers: listRuns() is their source of truth for
+    // lifecycle status, while getRun() supplies the live in-memory snapshot.
+    this.persistRun(managed);
 
     const resumeJournal = new Map((persisted.journal ?? []).map((e) => [e.index, e] as const));
     this.emit("resumed", { runId });

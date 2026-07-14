@@ -1372,6 +1372,28 @@ test(
 // ─── Event tests ───────────────────────────────────────────────────────────────
 
 test(
+  "listRuns reflects running status immediately after resume",
+  withTempCwd(async (cwd) => {
+    const da = deferredAgent();
+    const manager = new WorkflowManager({ cwd, agent: da.runner });
+    manager.on("error", () => {});
+
+    const { runId, promise } = manager.startInBackground(oneAgentScript);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    manager.pause(runId);
+
+    const resumed = await manager.resume(runId);
+    const persisted = manager.listRuns().find((run) => run.runId === runId);
+
+    assert.equal(resumed, true);
+    assert.equal(persisted?.status, "running", "listRuns should show running status after resume");
+
+    da.resolve("done");
+    await promise.catch(() => {});
+  }),
+);
+
+test(
   "manager emits 'resumed' event on resume",
   withTempCwd(async (cwd) => {
     const da = deferredAgent();

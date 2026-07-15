@@ -67,6 +67,10 @@ phase('Work')
 const a = await agent('do it', { label: 'a' })
 return { a }`;
 
+const missingResultScript = `export const meta = { name: 'missing_result', description: 'missing result' }
+await agent('do it', { label: 'a' })
+log('finished work')`;
+
 /** Run each manager test with isolated cwd and HOME so workflow state is isolated. */
 function withTempCwd(fn: (cwd: string) => Promise<void>) {
   return async () => {
@@ -105,6 +109,26 @@ test(
     assert.equal(runs[0].workflowName, "tracked_demo");
     assert.equal(runs[0].status, "completed");
     assert.equal(runs[0].tokenUsage?.total, 140, "token usage is persisted for the navigator");
+  }),
+);
+
+test(
+  "runSync reports a missing workflow result as failed and preserves diagnostics",
+  withTempCwd(async (cwd) => {
+    const manager = new WorkflowManager({ cwd, agent: fakeAgent({ input: 30, output: 12, total: 42 }) });
+    manager.on("error", () => {});
+
+    await assert.rejects(
+      manager.runSync(missingResultScript),
+      /Workflow completed without returning a result\. Explicitly return a JSON-serializable value\./,
+    );
+
+    const run = manager.listRuns().find((candidate) => candidate.workflowName === "missing_result");
+    assert.equal(run?.status, "failed");
+    assert.equal(run?.agents[0]?.status, "done");
+    assert.ok(run?.logs.includes("finished work"));
+    assert.equal(run?.tokenUsage?.total, 42);
+    assert.equal(run?.result, undefined);
   }),
 );
 
@@ -290,6 +314,31 @@ test(
     const result = await promise;
     assert.equal(result.agentCount, 1);
     assert.equal(result.meta.name, "tracked_demo");
+  }),
+);
+
+test(
+  "startInBackground reports a missing workflow result as failed",
+  withTempCwd(async (cwd) => {
+    const manager = new WorkflowManager({ cwd, agent: fakeAgent({ total: 42 }) });
+    const errors: WorkflowError[] = [];
+    let completed = false;
+    manager.on("error", ({ error }: { error: WorkflowError }) => errors.push(error));
+    manager.on("complete", () => {
+      completed = true;
+    });
+
+    const { runId, promise } = manager.startInBackground(missingResultScript);
+    await assert.rejects(
+      promise,
+      /Workflow completed without returning a result\. Explicitly return a JSON-serializable value\./,
+    );
+
+    assert.equal(manager.getRun(runId)?.status, "failed");
+    assert.equal(manager.listRuns().find((run) => run.runId === runId)?.tokenUsage?.total, 42);
+    assert.equal(errors[0]?.code, WorkflowErrorCode.SCRIPT_VALIDATION_ERROR);
+    assert.equal(errors[0]?.recoverable, false);
+    assert.equal(completed, false);
   }),
 );
 

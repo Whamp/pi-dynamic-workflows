@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { WorkflowManager } from "../src/workflow-manager.js";
-import { backgroundStartedText, createWorkflowTool, modelRoutingGuideline } from "../src/workflow-tool.js";
+import { backgroundStartedText, createWorkflowTool } from "../src/workflow-tool.js";
 
-/** Minimal fake ModelRegistry, matching the shape the PR's existing tests use. */
+/** Minimal fake ModelRegistry, matching the shape used by workflow manager tests. */
 function fakeRegistry(models: Array<{ provider: string; id: string }>) {
   return {
     getAvailable: () => models,
@@ -32,10 +32,12 @@ test("createWorkflowTool has correct name and label", () => {
   assert.equal(tool.label, "Workflow");
 });
 
-test("createWorkflowTool has description", () => {
-  const tool = createWorkflowTool();
-  assert.ok(tool.description, "description should be truthy");
-  assert.ok(tool.description.length > 20, "tool.description should be more than 20");
+test("createWorkflowTool description states its delegation capability", () => {
+  const description = createWorkflowTool().description;
+
+  assert.match(description, /JavaScript workflow.*delegates work to subagents/i);
+  assert.match(description, /agent\(\).*optionally composing calls.*parallel\(\).*pipeline\(\)/i);
+  assert.doesNotMatch(description, /deterministic|required raw JavaScript|export const meta/i);
 });
 
 test("createWorkflowTool has parameters defined", () => {
@@ -54,32 +56,115 @@ test("createWorkflowTool has renderCall and renderResult", () => {
   assert.equal(typeof tool.renderResult, "function");
 });
 
-test("createWorkflowTool has promptSnippet", () => {
-  const tool = createWorkflowTool();
-  assert.ok(tool.promptSnippet, "promptSnippet should be truthy");
-  assert.ok(tool.promptSnippet.includes("workflow"), "should contain workflow");
+test("createWorkflowTool promptSnippet describes delegation and optional composition", () => {
+  const snippet = createWorkflowTool().promptSnippet;
+
+  assert.match(snippet, /delegate substantive .* work to subagents/i);
+  assert.match(snippet, /optionally composing agent calls/i);
+  assert.match(snippet, /parallel\(\)/);
+  assert.match(snippet, /pipeline\(\)/);
+  assert.match(snippet, /or both/i);
+  assert.doesNotMatch(snippet, /required script header|export const meta/i);
 });
 
-test("createWorkflowTool has promptGuidelines array", () => {
+test("createWorkflowTool keeps permanent workflow guidance focused", () => {
   const tool = createWorkflowTool();
+  const descriptor = Object.getOwnPropertyDescriptor(tool, "promptGuidelines");
+
   assert.ok(Array.isArray(tool.promptGuidelines), "tool.promptGuidelines should be an array");
-  assert.ok(tool.promptGuidelines.length > 5, "should have several guidelines");
+  assert.equal(descriptor?.get, undefined, "permanent guidance should not depend on a dynamic getter");
 });
 
-test("createWorkflowTool routes normal work through tiers and reserves exact models for user requests", () => {
-  const tool = createWorkflowTool();
-  const all = tool.promptGuidelines.join(" ");
+test("createWorkflowTool permanent guidance covers the authoring contract", () => {
+  const all = createWorkflowTool().promptGuidelines.join(" ");
 
-  assert.match(all, /opts\.tier/);
-  assert.match(all, /small.+medium.+big/s);
-  assert.match(all, /opts\.model only when the user names/i);
+  assert.match(all, /explicit workflow intent/i);
+  assert.match(all, /request for a workflow.*subagent delegation.*fan-out.*multi-agent orchestration/i);
+  assert.match(all, /enabled mode.*requires workflow/i);
+  assert.match(all, /ordinary tools.*work you can perform directly/i);
+  assert.match(all, /work unit.*natural task boundary/i);
+  assert.match(all, /comfortably.*one context window/i);
+  assert.match(all, /split larger work.*natural boundar/i);
+  assert.match(all, /agent prompt.*self-contained/i);
+  assert.match(all, /compose parallel\(\) and pipeline\(\).*both shapes/i);
+  assert.match(all, /parallel\(\).*independent work.*between stages.*all prior results/i);
+  assert.match(all, /pipeline\(\).*each item.*stages independently/i);
+  assert.match(all, /verification.*materially benefit.*cross-checking/i);
+  assert.match(all, /final synthesis agent.*comparison or prose/i);
+  assert.match(all, /explicitly `return`.*JSON-serializable/i);
+  assert.match(all, /`null`.*missing coverage.*not a negative finding/i);
+  assert.match(all, /failed work-unit identities.*before filtering/i);
+  assert.match(all, /coverage.*remains incomplete/i);
+  assert.match(all, /agent\(\) invocation.*short, unique `label`.*identifies its work unit/i);
+  assert.match(all, /`tier`.*configured model route/i);
+  assert.match(all, /standard routes.*`small`.*`medium`.*`big`/i);
+  assert.match(all, /user-configured route only when.*name and purpose.*provided in context/i);
+  assert.match(all, /use `model` instead of `tier` only to honor.*exact model.*user/i);
+  assert.match(
+    all,
+    /when an agent must return structured data.*plain JSON Schema.*`schema` option.*on success.*agent\(\).*validated object/i,
+  );
 });
 
-test("createWorkflowTool promptGuidelines keep budget and timeout unbounded by default", () => {
+test("createWorkflowTool permanent guidance omits conditional catalogs and recipes", () => {
+  const all = createWorkflowTool().promptGuidelines.join(" ");
+
+  assert.doesNotMatch(all, /Available agentTypes:/i);
+  assert.doesNotMatch(all, /currently available models/i);
+  assert.doesNotMatch(all, /verify\(|judgePanel\(|loopUntilDry\(|completenessCheck\(/i);
+  assert.doesNotMatch(all, /tokenBudget|agentTimeoutMs|agentRetries/i);
+});
+
+test("createWorkflowTool keeps script syntax in the parameter schema", () => {
   const tool = createWorkflowTool();
-  const all = tool.promptGuidelines.join(" ");
-  assert.match(all, /do not set tokenBudget or agentTimeoutMs/i);
-  assert.match(all, /defaults are unbounded/i);
+  const parameters = tool.parameters as { properties?: Record<string, { description?: string }> };
+  const description = parameters.properties?.script?.description ?? "";
+
+  assert.match(description, /raw JavaScript workflow script.*no Markdown fences/i);
+  assert.match(description, /First statement: export const meta = \{ name:.*description:.*\}\. Add phases:/i);
+  assert.doesNotMatch(
+    description,
+    /First statement: export const meta = \{ name: '[^']+', description: '[^']+', phases:/i,
+  );
+  assert.match(description, /phases.*only when.*named phases.*declare only phases it will use/i);
+  assert.match(description, /multiple phases.*phase\('Exact Title'\).*agent options/i);
+  assert.match(description, /await workflow\(savedName, childArgs\).*saved workflow inline/i);
+  assert.match(description, /nesting.*one level.*parent run's concurrency, agent, and token limits/i);
+  assert.match(
+    description,
+    /Optional quality helpers include verify\(\), judgePanel\(\), loopUntilDry\(\), and completenessCheck\(\)/i,
+  );
+  assert.match(description, /Optional control helpers include retry\(\) and gate\(\)/i);
+  assert.match(description, /budget exposes total, spent\(\), and remaining\(\)/i);
+  assert.match(description, /phase\('Name', \{ budget: N \}\).*phase token limit/i);
+  assert.match(description, /optional `agentType` option.*named user or project definition/i);
+  assert.match(description, /bind tools, a model, and role instructions/i);
+  assert.match(description, /name and purpose.*provided in context/i);
+  assert.match(description, /bound model overrides `tier`.*explicit `model` overrides both/i);
+  assert.match(description, /plain JavaScript only.*imports.*require\(\).*filesystem modules/i);
+  assert.match(description, /Date\.now\(\).*Math\.random\(\).*new Date\(\).*unavailable/i);
+  assert.match(description, /args, cwd, process\.cwd\(\), and budget/i);
+  assert.match(description, /must call agent\(\) at least once/i);
+  assert.match(description, /parallel\(\) requires functions, not promises.*results in input order/i);
+  assert.match(description, /pipeline\(items, \.\.\.stages\).*stages sequentially.*items proceed concurrently/i);
+  assert.match(description, /each stage receives.*previousValue.*originalItem.*index/i);
+
+  const guidance = tool.promptGuidelines.join(" ");
+  assert.doesNotMatch(guidance, /Markdown fences|First statement: export const meta/i);
+  assert.doesNotMatch(guidance, /Date\.now\(\)|Math\.random\(\)|new Date\(\)/i);
+  assert.doesNotMatch(guidance, /parallel\(\) requires functions, not promises|results in input order/i);
+  assert.doesNotMatch(guidance, /each stage receives.*previousValue.*originalItem.*index/i);
+});
+
+test("createWorkflowTool keeps background behavior in the parameter schema", () => {
+  const tool = createWorkflowTool();
+  const parameters = tool.parameters as { properties?: Record<string, { description?: string }> };
+  const description = parameters.properties?.background?.description ?? "";
+
+  assert.match(description, /Default: true/i);
+  assert.match(description, /result is delivered back.*when it finishes/i);
+  assert.match(description, /false only when.*result inline.*same turn/i);
+  assert.doesNotMatch(tool.promptGuidelines.join(" "), /runs are background by default/i);
 });
 
 test("createWorkflowTool schema describes unbounded default timeout", () => {
@@ -90,58 +175,19 @@ test("createWorkflowTool schema describes unbounded default timeout", () => {
   assert.match(description, /only when the user asks/i);
 });
 
-test("createWorkflowTool schema exposes concurrency and agentRetries", () => {
+test("createWorkflowTool schema exposes resource controls and large-fan-out authority", () => {
   const tool = createWorkflowTool();
   const parameters = tool.parameters as { properties?: Record<string, { description?: string }> };
 
   assert.match(parameters.properties?.concurrency?.description ?? "", /Maximum concurrent agents/i);
   assert.match(parameters.properties?.agentRetries?.description ?? "", /Retry attempts/i);
-});
-
-test("createWorkflowTool promptGuidelines mention retry and concurrency controls", () => {
-  const tool = createWorkflowTool();
-  const all = tool.promptGuidelines.join(" ");
-
-  assert.match(all, /low concurrency/i);
-  assert.match(all, /agentRetries/i);
-  assert.match(all, /null handling/i);
-});
-
-// ─── modelRoutingGuideline ──────────────────────────────────────────────────────
-
-test("modelRoutingGuideline mentions all three tier names", () => {
-  const text = modelRoutingGuideline();
-  assert.ok(text.includes("small"), "should mention small tier");
-  assert.ok(text.includes("medium"), "should mention medium tier");
-  assert.ok(text.includes("big"), "should mention big tier");
-});
-
-test("modelRoutingGuideline describes each tier purpose", () => {
-  const text = modelRoutingGuideline();
-  assert.ok(text.includes("lightweight"), "should contain lightweight");
-  assert.ok(text.includes("balanced"), "should contain balanced");
-  assert.ok(text.includes("synthesis"), "should contain synthesis");
-});
-
-test("modelRoutingGuideline explains tier vs model priority", () => {
-  const text = modelRoutingGuideline();
-  assert.ok(text.includes("opts.tier"), "should mention opts.tier");
-  assert.ok(text.includes("opts.model"), "should mention opts.model");
-  assert.ok(
-    /opts\.(tier|model).+opts\.(model|tier)/.test(text),
-    "should explain ordering / relationship between tier and model",
-  );
-});
-
-test("modelRoutingGuideline explains when to use each option", () => {
-  const text = modelRoutingGuideline();
-  assert.ok(/small.*(exploration|search|inventory|agents)/i.test(text), "small tier should mention light workloads");
-  assert.ok(/big.*(synthesis|judgment|decision)/i.test(text), "big tier should mention heavy reasoning");
+  assert.match(parameters.properties?.maxAgents?.description ?? "", /1000.*safety ceiling, not a target/i);
+  assert.match(parameters.properties?.maxAgents?.description ?? "", /lower limit.*dynamic or exploratory fan-out/i);
+  assert.match(parameters.properties?.maxAgents?.description ?? "", /large fan-outs.*explicit user intent/i);
 });
 
 test("createWorkflowTool invalid args throws descriptive error", () => {
   const tool = createWorkflowTool();
-  // We can test prepareArguments through the tool definition
   if (tool.prepareArguments) {
     const prepare = tool.prepareArguments as (args: unknown) => unknown;
     assert.throws(() => prepare({ script: 123 }), /script.*string/);
@@ -154,7 +200,7 @@ test("createWorkflowTool with custom cwd creates tool", () => {
   assert.equal(tool.name, "workflow");
 });
 
-test("createWorkflowTool does not add configured model IDs to promptGuidelines", () => {
+test("createWorkflowTool does not add configured model IDs to permanent guidance", () => {
   const manager = new WorkflowManager({ cwd: "/tmp" });
   manager.setModelRegistry(fakeRegistry([{ provider: "router", id: "private-model" }]));
   const tool = createWorkflowTool({ cwd: "/tmp", manager });
@@ -163,14 +209,6 @@ test("createWorkflowTool does not add configured model IDs to promptGuidelines",
 
   manager.setModelRegistry(fakeRegistry([{ provider: "router", id: "later-private-model" }]));
   assert.doesNotMatch(tool.promptGuidelines.join(" "), /router\/later-private-model/);
-});
-
-test("modelRoutingGuideline output is non-empty and well-formed", () => {
-  const text = modelRoutingGuideline();
-  assert.ok(text.length > 50, "should be a substantial instruction");
-  assert.ok(text.endsWith(".") || text.endsWith("") || text.endsWith("`"), "should end properly");
-  assert.ok(!text.includes("undefined"), "no undefined interpolation");
-  assert.ok(!text.includes("[object Object]"), "no object serialization leaks");
 });
 
 // ─── prepareArguments / normalizeWorkflowScript ─────────────────────────────────

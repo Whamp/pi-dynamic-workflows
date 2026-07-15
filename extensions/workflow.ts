@@ -52,10 +52,7 @@ export default function extension(pi: ExtensionAPI) {
     // down to a lighter same-family sibling (e.g. Claude → Haiku).
     manager.setMainModel(ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : undefined);
     // Share the host session's model registry so tier/phase routing resolves
-    // extension-registered providers (e.g. ollama-cloud) consistently. Set it
-    // before activating the tool: the tool's promptGuidelines read the
-    // manager's registry lazily, so tool-registry refreshes from here on
-    // advertise the shared registry's models.
+    // extension-registered providers (e.g. ollama-cloud) consistently.
     manager.setModelRegistry(ctx.modelRegistry);
     const active = pi.getActiveTools();
     if (!active.includes(workflowTool.name)) {

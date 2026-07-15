@@ -49,6 +49,57 @@ function createDeferred<T = void>(): { promise: Promise<T>; resolve: (value: T |
   return { promise, resolve };
 }
 
+test("runWorkflow rejects a script that completes without returning a result", async () => {
+  await assert.rejects(
+    runWorkflow(
+      `export const meta = { name: 'missing_result', description: 'missing result' }
+await agent('work', { label: 'worker' })`,
+      { agent: fakeAgent({}, "ok"), persistLogs: false },
+    ),
+    (error: unknown) =>
+      error instanceof WorkflowError &&
+      error.code === WorkflowErrorCode.SCRIPT_VALIDATION_ERROR &&
+      error.recoverable === false &&
+      error.message === "Workflow completed without returning a result. Explicitly return a JSON-serializable value.",
+  );
+});
+
+test("runWorkflow rejects bare-expression and explicit-undefined results", async () => {
+  const bodies = [
+    "const result = await agent('work', { label: 'worker' })\nresult;",
+    "await agent('work', { label: 'worker' })\nreturn undefined",
+  ];
+
+  for (const body of bodies) {
+    await assert.rejects(
+      runWorkflow(`export const meta = { name: 'undefined_result', description: 'undefined result' }\n${body}`, {
+        agent: fakeAgent({}, "ok"),
+        persistLogs: false,
+      }),
+      /Workflow completed without returning a result\. Explicitly return a JSON-serializable value\./,
+    );
+  }
+});
+
+test("runWorkflow accepts valid falsy JSON results", async () => {
+  const cases = [
+    { expression: "null", expected: null },
+    { expression: "false", expected: false },
+    { expression: "0", expected: 0 },
+    { expression: "''", expected: "" },
+  ];
+
+  for (const { expression, expected } of cases) {
+    const result = await runWorkflow(
+      `export const meta = { name: 'falsy_result', description: 'falsy result' }
+await agent('work', { label: 'worker' })
+return ${expression}`,
+      { agent: fakeAgent({}, "ok"), persistLogs: false },
+    );
+    assert.equal(result.result, expected);
+  }
+});
+
 test("runWorkflow concurrency caps parallel agents", async () => {
   let active = 0;
   let maxActive = 0;
@@ -473,6 +524,23 @@ return { a, nested }`;
 
   assert.equal(result.agentCount, 2);
   assert.equal(result.result.nested.child, "ran:child task");
+});
+
+test("workflow() rejects a nested workflow that returns undefined", async () => {
+  const child = `export const meta = { name: 'child_missing_result', description: 'missing result' }
+await agent('child task', { label: 'child' })`;
+  const parent = `export const meta = { name: 'parent_missing_result', description: 'nested missing result' }
+const nested = await workflow('child')
+return { nested }`;
+
+  await assert.rejects(
+    runWorkflow(parent, {
+      agent: countingAgent().runner,
+      persistLogs: false,
+      loadSavedWorkflow: (name) => (name === "child" ? child : undefined),
+    }),
+    /Workflow completed without returning a result\. Explicitly return a JSON-serializable value\./,
+  );
 });
 
 test("workflow() nesting is one level deep (second level throws)", async () => {

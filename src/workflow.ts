@@ -922,6 +922,14 @@ export async function runWorkflow<T = unknown>(
     // Emit final token usage
     options.onTokenUsage?.(shared.tokenUsage);
 
+    if (result === undefined) {
+      throw new WorkflowError(
+        "Workflow completed without returning a result. Explicitly return a JSON-serializable value.",
+        WorkflowErrorCode.SCRIPT_VALIDATION_ERROR,
+        { recoverable: false },
+      );
+    }
+
     return {
       meta,
       result: result as T,

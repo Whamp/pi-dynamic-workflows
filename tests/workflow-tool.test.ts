@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { WorkflowManager } from "../src/workflow-manager.js";
 import { backgroundStartedText, createWorkflowTool } from "../src/workflow-tool.js";
@@ -198,6 +201,42 @@ test("createWorkflowTool invalid args throws descriptive error", () => {
 test("createWorkflowTool with custom cwd creates tool", () => {
   const tool = createWorkflowTool({ cwd: "/tmp" });
   assert.equal(tool.name, "workflow");
+});
+
+test("foreground workflow tool reports a missing script result as failure", async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "pi-dw-tool-"));
+  try {
+    const manager = new WorkflowManager({
+      cwd,
+      agent: {
+        async run() {
+          return "ok";
+        },
+      },
+    });
+    manager.on("error", () => {});
+    const tool = createWorkflowTool({ cwd, manager });
+    assert.ok(tool.execute);
+
+    await assert.rejects(
+      tool.execute(
+        "missing-result-call",
+        {
+          script: `export const meta = { name: 'missing_result', description: 'missing result' }
+await agent('work', { label: 'worker' })`,
+          background: false,
+        },
+        new AbortController().signal,
+        () => {},
+        undefined,
+      ),
+      /Workflow completed without returning a result\. Explicitly return a JSON-serializable value\./,
+    );
+
+    assert.equal(manager.listRuns()[0]?.status, "failed");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });
 
 test("createWorkflowTool does not add configured model IDs to permanent guidance", () => {

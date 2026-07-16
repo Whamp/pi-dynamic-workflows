@@ -28,7 +28,8 @@
     "lint": "biome lint .",
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "prototype:capability-contract": "tsx src/prototypes/workflow-capability-contract/tui.prototype.ts"
   },
   "keywords": [
     "pi-package",

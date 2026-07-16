@@ -28,6 +28,8 @@
     "lint": "biome lint .",
     "build": "tsc",
     "dev": "tsx src/index.ts",
+    "prototype:workflow-authoring": "node prototypes/workflow-authoring-skill/prototype-driver.mjs",
+    "prototype:workflow-authoring:validate": "npm run build --silent && node prototypes/workflow-authoring-skill/workflow-authoring/scripts/validate-templates.mjs",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

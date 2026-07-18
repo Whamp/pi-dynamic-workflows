@@ -1,0 +1,8 @@
+{
+  "formatVersion": 1,
+  "algorithm": "sha256",
+  "surfaces": {
+    "compactGuidance": "d54bd6a5ee776bceb0b097ece5c6cc7474d9802e634ea4f9590f4ed6a28763e7",
+    "detailedProse": "362760380420405a691e408e1bf279c1015a43e4aa9cb7442fd11fe53cd5911e"
+  }
+}

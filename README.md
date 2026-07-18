@@ -84,6 +84,41 @@ return await agent(
 - **Quality patterns** — compose `verify()`, `judgePanel()`, `loopUntilDry()`, and `completenessCheck()` instead of rebuilding review loops.
 - **Reusable workflows** — save any run as a command and call saved workflows from other workflows.
 
+## Supported workflow capabilities
+
+The installed extension generates this compact index from its executable capability contract. Read the [workflow authoring guide](docs/workflow-authoring.md) or use the packaged `workflow-authoring` skill for constraints, lifecycle guidance, and adaptable examples; configured route and agent-type values remain environment-specific.
+
+<!-- BEGIN GENERATED SUPPORTED WORKFLOW CAPABILITIES -->
+| Name | Classification | Signature | Options and defaults |
+| --- | --- | --- | --- |
+| agent | runtime-global | `agent(prompt, options?) => Promise<string \| structured value \| null>` | `label`: string (optional; default: derived from phase and call count)<br>`phase`: string (optional; default: current phase)<br>`schema`: plain JSON Schema (optional)<br>`model`: string (optional)<br>`tier`: string (optional)<br>`isolation`: "worktree" (optional)<br>`agentType`: string (optional)<br>`timeoutMs`: number \| null (optional; default: run timeout; null disables)<br>`retries`: number (optional; default: run retry count) |
+| parallel | runtime-global | `parallel(thunks) => Promise<Array<unknown \| null>>` | — |
+| pipeline | runtime-global | `pipeline(items, ...stages) => Promise<Array<unknown \| null>>` | — |
+| workflow | runtime-global | `workflow(savedName, childArgs?) => Promise<unknown>` | — |
+| verify | runtime-global | `verify(item: unknown, options?: { reviewers?: number; threshold?: number; lens?: string \| string[] }) => Promise<{ real: boolean; realCount: number; total: number; votes: Array<{ real: boolean; reason?: string }> }>` | `reviewers`: number (optional; default: 2)<br>`threshold`: number (optional; default: 0.5)<br>`lens`: string \| string[] (optional) |
+| judgePanel | runtime-global | `judgePanel(attempts: unknown[], options?: { judges?: number; rubric?: string }) => Promise<{ index: number; attempt: unknown; score: number; judgments: Array<{ score: number; reason?: string }> } \| undefined>` | `judges`: number (optional; default: 3)<br>`rubric`: string (optional; default: "overall quality and correctness") |
+| loopUntilDry | runtime-global | `loopUntilDry(options: { round: (roundIndex: number) => unknown[] \| Promise<unknown[]>; key?: (item: unknown) => string; consecutiveEmpty?: number; maxRounds?: number }) => Promise<unknown[]>` | `round`: (roundIndex: number) => unknown[] \| Promise<unknown[]> (required)<br>`key`: (item: unknown) => string (optional; default: JSON.stringify)<br>`consecutiveEmpty`: number (optional; default: 2)<br>`maxRounds`: number (optional; default: 50) |
+| completenessCheck | runtime-global | `completenessCheck(taskArgs: unknown, results: unknown) => Promise<{ complete: boolean; missing?: string[] } \| null>` | — |
+| retry | runtime-global | `retry(thunk: (attempt: number) => unknown \| Promise<unknown>, options?: { attempts?: number; until?: (result: unknown) => boolean }) => Promise<unknown>` | `attempts`: number (optional; default: 3)<br>`until`: (result: unknown) => boolean (optional; default: accept first result when omitted) |
+| gate | runtime-global | `gate(thunk: (feedback: string \| undefined, attempt: number) => unknown \| Promise<unknown>, validator: (value: unknown) => { ok: boolean; feedback?: string } \| Promise<{ ok: boolean; feedback?: string }>, options?: { attempts?: number }) => Promise<{ ok: boolean; value: unknown; attempts: number }>` | `attempts`: number (optional; default: 3) |
+| checkpoint | runtime-global | `checkpoint(prompt, options?) => Promise<unknown>` | `default`: unknown (optional; default: true when no UI and omitted)<br>`headless`: "default" \| "abort" (optional; default: "default")<br>`kind`: "confirm" \| "input" \| "select" (optional; default: "confirm")<br>`choices`: string[] (optional)<br>`timeoutMs`: number (optional) |
+| log | runtime-global | `log(message) => void` | — |
+| phase | runtime-global | `phase(title, options?) => void` | `budget`: number (optional) |
+| args | runtime-global | `args: unknown` | — |
+| cwd | runtime-global | `cwd: string` | — |
+| process | runtime-global | `process: { cwd(): string }` | — |
+| budget | runtime-global | `budget: { total, spent(), remaining() }` | — |
+| script | workflow-tool-input | `script: string` | — |
+| args | workflow-tool-input | `args?: unknown` | — |
+| background | workflow-tool-input | `background?: boolean = true` | — |
+| maxAgents | workflow-tool-input | `maxAgents?: number = 1000` | — |
+| concurrency | workflow-tool-input | `concurrency?: number` | — |
+| agentRetries | workflow-tool-input | `agentRetries?: number = configured value or 0` | — |
+| agentTimeoutMs | workflow-tool-input | `agentTimeoutMs?: number = configured value or unbounded` | — |
+| tokenBudget | workflow-tool-input | `tokenBudget?: number = unlimited` | — |
+| resumeFromRunId | workflow-tool-input | `resumeFromRunId?: string` | — |
+<!-- END GENERATED SUPPORTED WORKFLOW CAPABILITIES -->
+
 ## Built-in workflows
 
 ```text
@@ -242,6 +277,18 @@ Library API note: the unused `createSharedStoreTools` export was removed — use
 npm install
 npm test     # Biome + TypeScript + unit tests
 ```
+
+### Optional model-comprehension evidence
+
+The comprehension harness is manual and never runs in normal CI, `npm test`, or the release gate. Select an available model explicitly; the harness never embeds or chooses from a static model or agent-type catalogue.
+
+```bash
+npm run comprehension -- --model provider/model                    # quick writing scenario
+npm run comprehension -- --model provider/model --suite full       # write, edit, review, and debug
+npm run comprehension -- --model provider/model --output runs/a.json
+```
+
+By default, evidence is written under ignored `.pi/model-comprehension/`. Each JSON run records the exact prompts and versions, generated workflows, skill reads, provider token usage, deterministic runtime calls/topology/results, assertions, and failure details. Scenario failures are retained as non-blocking evidence and do not produce a failing exit status; argument, model-selection, and setup errors do.
 
 Features are also verified end-to-end against real Pi subagent sessions before release. See [CONTRIBUTING.md](./CONTRIBUTING.md) to contribute.
 

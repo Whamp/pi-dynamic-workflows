@@ -90,6 +90,19 @@ test("capability definition inventories the settled runtime and invocation contr
   assert.equal(WORKFLOW_CAPABILITY_DEFINITION.versions.content.kind, "present-at");
 });
 
+test("tool-input contract records configured omission defaults and soft budget accounting", () => {
+  const agentTimeoutMs = WORKFLOW_CAPABILITY_DEFINITION.capabilities.find(
+    ({ id }) => id === "workflow.tool-input.agentTimeoutMs",
+  );
+  const tokenBudget = WORKFLOW_CAPABILITY_DEFINITION.capabilities.find(
+    ({ id }) => id === "workflow.tool-input.tokenBudget",
+  );
+
+  assert.equal(agentTimeoutMs?.signature, "agentTimeoutMs?: number = configured default or unbounded");
+  assert.equal(tokenBudget?.signature, "tokenBudget?: number = configured default or unlimited");
+  assert.deepEqual(tokenBudget?.constraints, ["soft pre-call gate; in-flight work can overshoot"]);
+});
+
 test("contract data is immutable after validation", () => {
   const firstCapability = WORKFLOW_CAPABILITY_DEFINITION.capabilities[0];
   assert.throws(() => Object.assign(firstCapability, { label: "mutated" }), TypeError);

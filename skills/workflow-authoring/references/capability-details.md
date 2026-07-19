@@ -2,7 +2,7 @@
 # Exhaustive workflow capability facts
 
 Contract format: `1.0.0`<br>
-Contract content / skill / extension: `3.0.0`
+Contract content / skill / extension: `3.2.2`
 
 Every exact fact below is projected from the installed extension's capability contract. Explanatory judgment belongs in the hand-written references next to this file.
 
@@ -267,14 +267,14 @@ Every exact fact below is projected from the installed extension's capability co
 
 - Classification: `workflow-tool-input`
 - Support: `supported`
-- Signature: `agentTimeoutMs?: number = configured value or unbounded`
+- Signature: `agentTimeoutMs?: number = configured default or unbounded`
 
 <a id="tool-input-tokenbudget"></a>
 ## tokenBudget
 
 - Classification: `workflow-tool-input`
 - Support: `supported`
-- Signature: `tokenBudget?: number = unlimited`
+- Signature: `tokenBudget?: number = configured default or unlimited`
 - Constraint: soft pre-call gate; in-flight work can overshoot
 
 <a id="tool-input-resumefromrunid"></a>

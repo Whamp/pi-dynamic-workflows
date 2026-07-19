@@ -458,8 +458,10 @@ const capabilities: readonly CapabilityDescriptor[] = [
   toolInput("maxAgents", "maxAgents?: number = 1000", ["default, not a hard product maximum"]),
   toolInput("concurrency", "concurrency?: number", ["runtime clamps to 1..16"]),
   toolInput("agentRetries", "agentRetries?: number = configured value or 0", ["floored and clamped to 0..3"]),
-  toolInput("agentTimeoutMs", "agentTimeoutMs?: number = configured value or unbounded"),
-  toolInput("tokenBudget", "tokenBudget?: number = unlimited", ["soft pre-call gate; in-flight work can overshoot"]),
+  toolInput("agentTimeoutMs", "agentTimeoutMs?: number = configured default or unbounded"),
+  toolInput("tokenBudget", "tokenBudget?: number = configured default or unlimited", [
+    "soft pre-call gate; in-flight work can overshoot",
+  ]),
   toolInput("resumeFromRunId", "resumeFromRunId?: string", [
     "resumes a prior incomplete run with an edited script",
     "unchanged positional agent calls replay from cache until the first changed or inserted call",

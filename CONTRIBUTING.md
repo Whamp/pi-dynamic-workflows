@@ -27,6 +27,21 @@ Fake-agent unit tests are necessary but not sufficient. Any change to how agents
 
 A throwaway harness for this should live in the repo root (not `/tmp`, whose symlink breaks relative imports), import from `./src`, and be deleted before commit — don't commit harnesses.
 
+## Protected workflow-authoring guidance
+
+Some files under `skills/workflow-authoring/` contain mixed or behaviorally uncovered guidance. Their full-file SHA-256 hashes in `WORKFLOW_AUTHORING_FROZEN_FILES` (`src/workflow-authoring-coverage.ts`) are deliberate review barriers, not generated output.
+
+If `PROTECTED_GUIDANCE_DRIFT` reports an accidental change, revert it. For an intentional change, inspect the affected coverage manifest entry and its relevant behavioral tests and provider evidence before accepting it. Required anchors and required text in the manifest may also need deliberate updates. Only after that review should you recompute the exact SHA-256 and manually update the matching `sha256` in `WORKFLOW_AUTHORING_FROZEN_FILES`; never change a hash only to make the gate green.
+
+`npm run guidance:generate` refreshes only the non-contractual prose baseline; it does not update protected hashes. There is intentionally no protected-hash refresh command. Validate the reviewed change with exactly:
+
+```bash
+npm run docs:check
+npm run context:check
+npm run guidance:check
+npm run release:verify
+```
+
 ## Style
 
 Formatting and linting are handled by Biome (`npm run format`, `npm run lint`). Match the existing code; don't reformat files you aren't otherwise changing.

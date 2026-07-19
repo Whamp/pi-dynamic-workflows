@@ -180,6 +180,14 @@ test("generated capability index and exhaustive details are fresh and absent fro
   }
 });
 
+test("lifecycle guidance explains configured timeout and token-budget defaults", () => {
+  const lifecycle = readFileSync(join(ROOT, SKILL_ROOT, "references/lifecycle.md"), "utf8");
+
+  assert.match(lifecycle, /omitted `agentTimeoutMs`.*configured `defaultAgentTimeoutMs`.*otherwise.*unbounded/is);
+  assert.match(lifecycle, /omitted `tokenBudget`.*configured `defaultTokenBudget`.*otherwise.*unlimited/is);
+  assert.match(lifecycle, /soft pre-call gates.*concurrent work can overshoot/is);
+});
+
 test("generated facts cover the lifecycle constraints taught by the skill", () => {
   const facts = new Map(WORKFLOW_CAPABILITY_CONTRACT.projectStaticReferenceFacts().map((fact) => [fact.id, fact]));
   const exactFacts = [

@@ -254,7 +254,7 @@ function validateAuthoringCoverage(
       );
       continue;
     }
-    const drifted = entry.protectedGuidance.some(({ path, anchor, requiredText }) => {
+    const drifted = entry.protectedGuidance.find(({ path, anchor, requiredText }) => {
       const absolute = join(root, path);
       if (!existsSync(absolute) && guidanceOverrides[path] === undefined) return true;
       const source = guidanceOverrides[path] ?? readFileSync(absolute, "utf8");
@@ -264,11 +264,26 @@ function validateAuthoringCoverage(
       );
     });
     if (drifted) {
+      const absolute = join(root, drifted.path);
+      const source =
+        !existsSync(absolute) && guidanceOverrides[drifted.path] === undefined
+          ? null
+          : (guidanceOverrides[drifted.path] ?? readFileSync(absolute, "utf8"));
+      const failedChecks: string[] = [];
+      if (source === null) {
+        failedChecks.push("protected file");
+      }
+      if (source !== null && drifted.anchor !== undefined && !anchorExists(source, drifted.anchor)) {
+        failedChecks.push("required anchor");
+      }
+      if (source !== null && drifted.requiredText !== undefined && !source.includes(drifted.requiredText)) {
+        failedChecks.push("required text");
+      }
       diagnostics.push(
         diagnostic(
           WorkflowReleaseDiagnosticCode.PROTECTED_GUIDANCE_DRIFT,
           entry.id,
-          `Guidance-frozen authoring surface ${entry.id} changed without provider-backed comprehension coverage.`,
+          `Protected guidance for ${entry.id} no longer matches the ${failedChecks.join(" and ")} in ${drifted.path}. Restore it to undo an accidental change. For an intentional change, inspect the coverage manifest and relevant behavioral/provider evidence before deliberately updating the corresponding anchor/text in src/workflow-authoring-coverage.ts. See CONTRIBUTING.md#protected-workflow-authoring-guidance.`,
         ),
       );
     }
@@ -287,7 +302,7 @@ function validateFrozenGuidanceFiles(
         diagnostic(
           WorkflowReleaseDiagnosticCode.PROTECTED_GUIDANCE_DRIFT,
           path,
-          `Frozen workflow authoring guidance file is missing: ${path}.`,
+          `Protected workflow-authoring file is missing: ${path}. Restore an accidental deletion. An intentional removal requires review of the coverage manifest and relevant behavioral/provider evidence, followed by deliberate updates to authoring coverage and package resources. See CONTRIBUTING.md#protected-workflow-authoring-guidance.`,
         ),
       ];
     }
@@ -298,7 +313,7 @@ function validateFrozenGuidanceFiles(
           diagnostic(
             WorkflowReleaseDiagnosticCode.PROTECTED_GUIDANCE_DRIFT,
             path,
-            `Mixed workflow authoring guidance changed without reviewed coverage protection: ${path}.`,
+            `Protected workflow-authoring file changed: ${path}. Its SHA-256 is a deliberate anti-overfitting and manual-review gate. Revert accidental changes. For an intentional reviewed change, inspect the coverage manifest and relevant behavioral/provider evidence, recompute the exact SHA-256, and manually update the matching sha256 in WORKFLOW_AUTHORING_FROZEN_FILES (src/workflow-authoring-coverage.ts). See CONTRIBUTING.md#protected-workflow-authoring-guidance.`,
           ),
         ];
   });

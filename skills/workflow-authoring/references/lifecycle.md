@@ -2,7 +2,7 @@
 
 ## Bounds and budget
 
-Set finite bounds that match the work: `maxAgents`, `concurrency`, `agentRetries`, `agentTimeoutMs`, and `tokenBudget` at invocation time; loop and semantic-retry bounds inside the script.
+Set finite bounds that match the work: `maxAgents`, `concurrency`, `agentRetries`, `agentTimeoutMs`, and `tokenBudget` at invocation time; loop and semantic-retry bounds inside the script. An omitted `agentTimeoutMs` uses the configured `defaultAgentTimeoutMs` and is otherwise unbounded. An omitted `tokenBudget` uses the configured `defaultTokenBudget` and is otherwise unlimited.
 
 Enter a phase budget with `phase("Name", { budget: N })`; phase metadata does not carry budgets. `N` is a token allowance, not a call or round count: size it for the intended agent work instead of copying a small iteration limit. Token and phase budgets are soft pre-call gates. Spend lands after agents finish, so concurrent work can overshoot. A phase budget gates later calls in that phase; it neither reserves tokens nor cancels active calls. `budget.spent()` and `budget.remaining()` include nested work.
 

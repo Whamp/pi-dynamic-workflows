@@ -119,12 +119,17 @@ test("release gate blocks drift in guidance frozen outside provider-backed compr
     guidanceOverrides: { [patternPath]: withoutTournament },
   });
 
-  assert.ok(
-    diagnostics.some(
-      ({ code, severity, subject }) =>
-        code === "PROTECTED_GUIDANCE_DRIFT" && severity === "error" && subject === "workflow.pattern.tournament",
-    ),
+  const drift = diagnostics.find(
+    ({ code, severity, subject }) =>
+      code === "PROTECTED_GUIDANCE_DRIFT" && severity === "error" && subject === "workflow.pattern.tournament",
   );
+  assert.ok(drift);
+  assert.match(drift.message, /skills\/workflow-authoring\/references\/pattern-selection\.md/);
+  assert.match(drift.message, /required text/i);
+  assert.match(drift.message, /Restore.*accidental/i);
+  assert.match(drift.message, /intentional.*coverage manifest.*behavioral\/provider evidence/is);
+  assert.match(drift.message, /src\/workflow-authoring-coverage\.ts/);
+  assert.match(drift.message, /CONTRIBUTING\.md#protected-workflow-authoring-guidance/);
 });
 
 test("release gate freezes mixed guidance files against contradictory additions during autoresearch", () => {
@@ -138,7 +143,15 @@ test("release gate freezes mixed guidance files against contradictory additions 
     guidanceOverrides: { [patternPath]: contradictory },
   });
 
-  assert.ok(diagnostics.some(({ code, subject }) => code === "PROTECTED_GUIDANCE_DRIFT" && subject === patternPath));
+  const drift = diagnostics.find(({ code, subject }) => code === "PROTECTED_GUIDANCE_DRIFT" && subject === patternPath);
+  assert.ok(drift);
+  assert.match(drift.message, /skills\/workflow-authoring\/references\/pattern-selection\.md/);
+  assert.match(drift.message, /SHA-256.*deliberate.*manual-review gate/i);
+  assert.match(drift.message, /Revert accidental changes/i);
+  assert.match(drift.message, /intentional reviewed change.*recompute the exact SHA-256.*manually update/is);
+  assert.match(drift.message, /WORKFLOW_AUTHORING_FROZEN_FILES/);
+  assert.match(drift.message, /src\/workflow-authoring-coverage\.ts/);
+  assert.match(drift.message, /CONTRIBUTING\.md#protected-workflow-authoring-guidance/);
 });
 
 test("release gate blocks deletion of routing to guidance-frozen capabilities", () => {
@@ -161,6 +174,23 @@ test("release gate blocks deletion of routing to guidance-frozen capabilities", 
       ({ code, subject }) => code === "PROTECTED_GUIDANCE_DRIFT" && subject === "workflow.pattern.tournament",
     ),
   );
+});
+
+test("contributor docs explain the protected workflow-authoring guidance gate", () => {
+  const contributing = readFileSync(new URL("../CONTRIBUTING.md", import.meta.url), "utf8");
+
+  assert.match(contributing, /^## Protected workflow-authoring guidance$/m);
+  assert.match(contributing, /full-file SHA-256 hashes.*deliberate review barriers/is);
+  assert.match(contributing, /mixed or behaviorally uncovered guidance/i);
+  assert.match(contributing, /WORKFLOW_AUTHORING_FROZEN_FILES.*src\/workflow-authoring-coverage\.ts/is);
+  assert.match(contributing, /inspect.*coverage manifest.*behavioral.*provider evidence/is);
+  assert.match(contributing, /required anchors.*required text.*deliberate updates/is);
+  assert.match(contributing, /recompute the exact SHA-256.*manually update/is);
+  assert.match(contributing, /guidance:generate.*does not update protected hashes/is);
+  assert.match(contributing, /npm run docs:check/);
+  assert.match(contributing, /npm run context:check/);
+  assert.match(contributing, /npm run guidance:check/);
+  assert.match(contributing, /npm run release:verify/);
 });
 
 test("release gate rejects unprotected guidance and invented comprehension coverage", () => {

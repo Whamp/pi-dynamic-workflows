@@ -12,7 +12,7 @@
     },
     "providerVisibleWorkflowToolDefinition": {
       "serialization": "UTF-8 bytes of JSON.stringify({ name, description, parameters })",
-      "bytes": 3802
+      "bytes": 3918
     },
     "workflowAuthoringSkillDiscovery": {
       "serialization": "UTF-8 bytes of normalized Pi skill XML with package-relative location",
@@ -20,12 +20,12 @@
     },
     "ordinaryWorkflowOwnedAlwaysOn": {
       "serialization": "sum of permanent prompt, provider-visible tool definition, and normalized skill discovery bytes",
-      "bytes": 4882
+      "bytes": 4998
     },
     "workflowAuthoringSkillCorpus": {
       "serialization": "sum of UTF-8 bytes for every file under skills/workflow-authoring",
       "files": 27,
-      "bytes": 66847
+      "bytes": 67089
     },
     "representativeAuthoringProfiles": {
       "serialization": "sum of UTF-8 bytes for each profile's declared package-relative files",
@@ -53,7 +53,7 @@
             "skills/workflow-authoring/examples/phased-budgets.js",
             "skills/workflow-authoring/examples/saved-nested-workflows.js"
           ],
-          "bytes": 14634
+          "bytes": 14828
         },
         {
           "name": "review",
@@ -88,7 +88,7 @@
             "skills/workflow-authoring/examples/loop-until-done.js",
             "skills/workflow-authoring/examples/structured-output.js"
           ],
-          "bytes": 15222
+          "bytes": 15416
         },
         {
           "name": "retry",

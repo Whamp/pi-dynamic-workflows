@@ -2,7 +2,7 @@
 # Workflow capability index
 
 Contract format: `1.0.0`<br>
-Contract content / skill / extension: `3.0.0`
+Contract content / skill / extension: `3.2.2`
 
 This compact generated index covers supported runtime globals and workflow-tool inputs. For constraints, compatibility behavior, internal boundaries, and dynamic-reference ownership, follow the [exhaustive generated facts](capability-details.md).
 
@@ -34,7 +34,7 @@ This compact generated index covers supported runtime globals and workflow-tool 
 | maxAgents | workflow-tool-input | `maxAgents?: number = 1000` | — |
 | concurrency | workflow-tool-input | `concurrency?: number` | — |
 | agentRetries | workflow-tool-input | `agentRetries?: number = configured value or 0` | — |
-| agentTimeoutMs | workflow-tool-input | `agentTimeoutMs?: number = configured value or unbounded` | — |
-| tokenBudget | workflow-tool-input | `tokenBudget?: number = unlimited` | — |
+| agentTimeoutMs | workflow-tool-input | `agentTimeoutMs?: number = configured default or unbounded` | — |
+| tokenBudget | workflow-tool-input | `tokenBudget?: number = configured default or unlimited` | — |
 | resumeFromRunId | workflow-tool-input | `resumeFromRunId?: string` | — |
 <!-- END GENERATED SUPPORTED WORKFLOW CAPABILITIES -->

@@ -275,7 +275,7 @@ Library API note: the unused `createSharedStoreTools` export was removed — use
 
 ```bash
 npm install
-npm test     # Biome + TypeScript + unit tests
+npm test     # Biome, TypeScript, unit tests, and release checks
 ```
 
 ### Optional model-comprehension evidence

@@ -4,16 +4,16 @@ This report records review evidence for the compact workflow tool contract and t
 
 ## Context surfaces
 
-Measurements use UTF-8 bytes. The current `origin/main` baseline is `818fdd8`; the candidate is the final tree on `feat/self-documenting-workflow-capabilities`.
+Measurements use UTF-8 bytes. The historical baseline is `818fdd8` (release 3.0.0), captured when concision work began. The candidate is the final tree on `feat/self-documenting-workflow-capabilities`.
 
-| Surface | `origin/main` | Candidate | Change |
+| Surface | Baseline (`818fdd8`) | Candidate | Change |
 | --- | ---: | ---: | ---: |
 | Permanent workflow prompt | 766 | 742 | -24 |
-| Provider-visible workflow tool definition | 9,558 | 3,802 | -5,756 |
+| Provider-visible workflow tool definition | 9,558 | 3,918 | -5,640 |
 | Workflow-authoring skill discovery | 0 | 338 | +338 |
-| Ordinary workflow-owned always-on total | 10,324 | 4,882 | -5,442 (-52.7%) |
+| Ordinary workflow-owned always-on total | 10,324 | 4,998 | -5,326 (-51.6%) |
 
-The candidate also records 66,847 bytes across 27 on-demand skill files. Six representative authoring profiles have a median of 11,662 bytes. `docs/workflow-context-surfaces.json` is the generated, release-checked source for candidate measurements.
+The candidate also records 67,089 bytes across 27 on-demand skill files. Six representative authoring profiles have a median of 11,662 bytes. `docs/workflow-context-surfaces.json` is the generated, release-checked source for candidate measurements.
 
 ## Post-tuning comprehension validation
 

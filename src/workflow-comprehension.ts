@@ -1115,11 +1115,7 @@ function sampleProperty(key: string, schema: unknown, label: string, taskIdentit
   return `${key}:${label}`;
 }
 
-function callWithin(
-  calls: RuntimeCall[],
-  start: RuntimeEvent | undefined,
-  end: RuntimeEvent | undefined,
-): RuntimeCall | undefined {
+function callWithin(calls: RuntimeCall[], start?: RuntimeEvent, end?: RuntimeEvent): RuntimeCall | undefined {
   if (!start || !end) {
     return undefined;
   }

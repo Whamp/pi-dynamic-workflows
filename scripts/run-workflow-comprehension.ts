@@ -126,7 +126,7 @@ async function generateWorkflow(
   options: {
     modelRuntime: ModelRuntime;
     model: Model<Api>;
-    thinkingLevel: ModelThinkingLevel | undefined;
+    thinkingLevel?: ModelThinkingLevel;
   },
 ): Promise<ModelGeneration> {
   const isolatedRoot = await mkdtemp(join(tmpdir(), "workflow-comprehension-"));

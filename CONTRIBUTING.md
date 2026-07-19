@@ -6,7 +6,7 @@ Thanks for contributing to pi-dynamic-workflows. This project values small, well
 
 ```bash
 npm install
-npm test     # biome check + tsc build + unit tests — must pass
+npm test     # Biome, TypeScript, unit tests, and release checks — must pass
 ```
 
 `npm test` runs exactly what CI runs. If it's green locally it should be green in CI. CI runs on every PR to `main`; for fork PRs a maintainer approves the first run.

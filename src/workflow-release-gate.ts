@@ -313,7 +313,7 @@ function validateFrozenGuidanceFiles(
           diagnostic(
             WorkflowReleaseDiagnosticCode.PROTECTED_GUIDANCE_DRIFT,
             path,
-            `Protected workflow-authoring file changed: ${path}. Its SHA-256 is a deliberate anti-overfitting and manual-review gate. Revert accidental changes. For an intentional reviewed change, inspect the coverage manifest and relevant behavioral/provider evidence, recompute the exact SHA-256, and manually update the matching sha256 in WORKFLOW_AUTHORING_FROZEN_FILES (src/workflow-authoring-coverage.ts). See CONTRIBUTING.md#protected-workflow-authoring-guidance.`,
+            `Protected workflow-authoring file changed: ${path}. Its SHA-256 is an explicit review checkpoint for guidance with partial behavioral coverage. Revert accidental changes. For an intentional change, inspect the coverage manifest and relevant behavioral tests, plus provider evidence when needed, then run npm run guidance:accept -- ${path}. This updates the matching sha256 in WORKFLOW_AUTHORING_FROZEN_FILES (src/workflow-authoring-coverage.ts). See CONTRIBUTING.md#protected-workflow-authoring-guidance.`,
           ),
         ];
   });

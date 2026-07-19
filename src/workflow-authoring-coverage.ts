@@ -29,7 +29,7 @@ export interface WorkflowAuthoringCoverageEntry {
 /** Scenario identifiers that release checks may accept as provider-backed evidence. */
 export const WORKFLOW_COMPREHENSION_SCENARIO_IDS = COMPREHENSION_SCENARIOS.map(({ id }) => id);
 
-/** Complete mixed guidance files that remain immutable inside autoresearch. */
+/** Mixed guidance files that require explicit acceptance while behavioral coverage remains partial. */
 export const WORKFLOW_AUTHORING_FROZEN_FILES = [
   {
     path: "skills/workflow-authoring/SKILL.md",

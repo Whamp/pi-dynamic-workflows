@@ -28,6 +28,7 @@ test("normal tests and publishing share the model-free release gate", () => {
   assert.match(packageJson.scripts["release:check"], /context:check/);
   assert.match(packageJson.scripts["release:check"], /test:unit/);
   assert.match(packageJson.scripts["release:check"], /release:verify/);
+  assert.equal(packageJson.scripts["guidance:accept"], "tsx scripts/accept-workflow-guidance.ts");
   assert.doesNotMatch(packageJson.scripts["release:check"], /model|provider|comprehension/i);
 });
 
@@ -132,7 +133,7 @@ test("release gate blocks drift in guidance frozen outside provider-backed compr
   assert.match(drift.message, /CONTRIBUTING\.md#protected-workflow-authoring-guidance/);
 });
 
-test("release gate freezes mixed guidance files against contradictory additions during autoresearch", () => {
+test("release gate requires explicit acceptance for mixed guidance files with partial behavioral coverage", () => {
   const patternPath = "skills/workflow-authoring/references/pattern-selection.md";
   const patternSelection = readFileSync(new URL(`../${patternPath}`, import.meta.url), "utf8");
   const contradictory = `${patternSelection}\nTournament workflows should skip brackets and compare every candidate at once.\n`;
@@ -146,9 +147,10 @@ test("release gate freezes mixed guidance files against contradictory additions 
   const drift = diagnostics.find(({ code, subject }) => code === "PROTECTED_GUIDANCE_DRIFT" && subject === patternPath);
   assert.ok(drift);
   assert.match(drift.message, /skills\/workflow-authoring\/references\/pattern-selection\.md/);
-  assert.match(drift.message, /SHA-256.*deliberate.*manual-review gate/i);
+  assert.match(drift.message, /SHA-256.*explicit review checkpoint.*partial behavioral coverage/i);
   assert.match(drift.message, /Revert accidental changes/i);
-  assert.match(drift.message, /intentional reviewed change.*recompute the exact SHA-256.*manually update/is);
+  assert.match(drift.message, /intentional change.*npm run guidance:accept --.*pattern-selection\.md/is);
+  assert.doesNotMatch(drift.message, /anti-overfitting|autoresearch|manually update/i);
   assert.match(drift.message, /WORKFLOW_AUTHORING_FROZEN_FILES/);
   assert.match(drift.message, /src\/workflow-authoring-coverage\.ts/);
   assert.match(drift.message, /CONTRIBUTING\.md#protected-workflow-authoring-guidance/);
@@ -180,13 +182,16 @@ test("contributor docs explain the protected workflow-authoring guidance gate", 
   const contributing = readFileSync(new URL("../CONTRIBUTING.md", import.meta.url), "utf8");
 
   assert.match(contributing, /^## Protected workflow-authoring guidance$/m);
-  assert.match(contributing, /full-file SHA-256 hashes.*deliberate review barriers/is);
-  assert.match(contributing, /mixed or behaviorally uncovered guidance/i);
+  assert.match(contributing, /full-file SHA-256 hashes.*explicit review checkpoints/is);
+  assert.match(contributing, /mixed or partially behavior-covered guidance/i);
   assert.match(contributing, /WORKFLOW_AUTHORING_FROZEN_FILES.*src\/workflow-authoring-coverage\.ts/is);
-  assert.match(contributing, /inspect.*coverage manifest.*behavioral.*provider evidence/is);
+  assert.match(contributing, /housekeeping.*deterministic checks and review/is);
+  assert.match(contributing, /semantic guidance change.*behavioral tests.*provider evidence when needed/is);
   assert.match(contributing, /required anchors.*required text.*deliberate updates/is);
-  assert.match(contributing, /recompute the exact SHA-256.*manually update/is);
+  assert.match(contributing, /npm run guidance:accept --.*skills\/workflow-authoring/is);
+  assert.match(contributing, /updates only explicitly named frozen files/is);
   assert.match(contributing, /guidance:generate.*does not update protected hashes/is);
+  assert.doesNotMatch(contributing, /anti-overfitting|autoresearch/i);
   assert.match(contributing, /npm run docs:check/);
   assert.match(contributing, /npm run context:check/);
   assert.match(contributing, /npm run guidance:check/);

@@ -38,6 +38,7 @@
     "context:check": "tsx scripts/generate-workflow-context-measurement.ts --check",
     "guidance:generate": "tsx scripts/generate-workflow-guidance-baseline.ts",
     "guidance:check": "tsx scripts/generate-workflow-guidance-baseline.ts --check",
+    "guidance:accept": "tsx scripts/accept-workflow-guidance.ts",
     "comprehension": "tsx scripts/run-workflow-comprehension.ts",
     "delivery-choice": "tsx scripts/run-workflow-delivery-choice.ts",
     "dev": "tsx src/index.ts",

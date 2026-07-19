@@ -29,11 +29,17 @@ A throwaway harness for this should live in the repo root (not `/tmp`, whose sym
 
 ## Protected workflow-authoring guidance
 
-Some files under `skills/workflow-authoring/` contain mixed or behaviorally uncovered guidance. Their full-file SHA-256 hashes in `WORKFLOW_AUTHORING_FROZEN_FILES` (`src/workflow-authoring-coverage.ts`) are deliberate review barriers, not generated output.
+Some files under `skills/workflow-authoring/` contain mixed or partially behavior-covered guidance. Their full-file SHA-256 hashes in `WORKFLOW_AUTHORING_FROZEN_FILES` (`src/workflow-authoring-coverage.ts`) are explicit review checkpoints, not proof that the wording is correct.
 
-If `PROTECTED_GUIDANCE_DRIFT` reports an accidental change, revert it. For an intentional change, inspect the affected coverage manifest entry and its relevant behavioral tests and provider evidence before accepting it. Required anchors and required text in the manifest may also need deliberate updates. Only after that review should you recompute the exact SHA-256 and manually update the matching `sha256` in `WORKFLOW_AUTHORING_FROZEN_FILES`; never change a hash only to make the gate green.
+If `PROTECTED_GUIDANCE_DRIFT` reports an accidental change, revert it. For housekeeping such as a typo, link, formatting, or version update, deterministic checks and review are enough. For a semantic guidance change, inspect the affected coverage manifest entry, update relevant behavioral tests, and review provider evidence when needed. Required anchors and required text in the manifest may also need deliberate updates.
 
-`npm run guidance:generate` refreshes only the non-contractual prose baseline; it does not update protected hashes. There is intentionally no protected-hash refresh command. Validate the reviewed change with exactly:
+After that review, explicitly accept each changed frozen file:
+
+```bash
+npm run guidance:accept -- skills/workflow-authoring/path/to/file
+```
+
+The command updates only explicitly named frozen files and prints each old and new hash for review. It does not update protected anchors or required text. `npm run guidance:generate` refreshes only the non-contractual prose baseline; it does not update protected hashes. Validate the accepted change with exactly:
 
 ```bash
 npm run docs:check

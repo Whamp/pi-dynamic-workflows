@@ -29,6 +29,8 @@ A throwaway harness for this should live in the repo root (not `/tmp`, whose sym
 
 ## Protected workflow-authoring guidance
 
+The goal is to keep workflow guidance accurate as the runtime changes without bloating the context sent to every model. Stable capability facts come from the executable capability contract and generated documentation. Detailed authoring guidance lives in the on-demand `workflow-authoring` skill instead of the permanent prompt. Context checks keep these surfaces from growing unnoticed.
+
 Some files under `skills/workflow-authoring/` contain mixed or partially behavior-covered guidance. Their full-file SHA-256 hashes in `WORKFLOW_AUTHORING_FROZEN_FILES` (`src/workflow-authoring-coverage.ts`) are explicit review checkpoints, not proof that the wording is correct.
 
 If `PROTECTED_GUIDANCE_DRIFT` reports an accidental change, revert it. For housekeeping such as a typo, link, formatting, or version update, deterministic checks and review are enough. For a semantic guidance change, inspect the affected coverage manifest entry, update relevant behavioral tests, and review provider evidence when needed. Required anchors and required text in the manifest may also need deliberate updates.

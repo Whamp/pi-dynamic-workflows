@@ -182,6 +182,9 @@ test("contributor docs explain the protected workflow-authoring guidance gate", 
   const contributing = readFileSync(new URL("../CONTRIBUTING.md", import.meta.url), "utf8");
 
   assert.match(contributing, /^## Protected workflow-authoring guidance$/m);
+  assert.match(contributing, /keep.*guidance accurate.*runtime.*changes/is);
+  assert.match(contributing, /detailed.*on-demand.*skill.*permanent.*prompt/is);
+  assert.match(contributing, /context checks.*growing unnoticed/is);
   assert.match(contributing, /full-file SHA-256 hashes.*explicit review checkpoints/is);
   assert.match(contributing, /mixed or partially behavior-covered guidance/i);
   assert.match(contributing, /WORKFLOW_AUTHORING_FROZEN_FILES.*src\/workflow-authoring-coverage\.ts/is);
@@ -196,6 +199,17 @@ test("contributor docs explain the protected workflow-authoring guidance gate", 
   assert.match(contributing, /npm run context:check/);
   assert.match(contributing, /npm run guidance:check/);
   assert.match(contributing, /npm run release:verify/);
+});
+
+test("repository instructions route agents to workflow guidance maintenance rules", () => {
+  const agentInstructions = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
+
+  assert.match(agentInstructions, /CONTRIBUTING\.md#protected-workflow-authoring-guidance/);
+  assert.match(agentInstructions, /workflow runtime.*tool API.*workflow-authoring.*skill/is);
+  assert.match(agentInstructions, /stable capability facts.*executable capability contract/is);
+  assert.match(agentInstructions, /detailed authoring guidance.*on-demand skill.*always-on prompt/is);
+  assert.match(agentInstructions, /npm run context:check/);
+  assert.match(agentInstructions, /npm run guidance:accept -- <path>/);
 });
 
 test("release gate rejects unprotected guidance and invented comprehension coverage", () => {

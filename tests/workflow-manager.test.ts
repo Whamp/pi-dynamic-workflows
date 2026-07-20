@@ -2008,32 +2008,108 @@ test(
 );
 
 test(
-  "resume() superseding a NEVER-ABORTED failed run suppresses a stray sibling agent's later agentEnd event (#1)",
+  "pause() -> immediate resume(): the stale (paused) execution's delayed agent rejection never emits a stray 'error' event (emitLive gate)",
   withTempCwd(async (cwd) => {
-    // Key insight: pause()/stop()/deleteRun() all abort the run's shared
-    // signal before/while superseding it — so a straggling agent, once it
-    // resolves, hits agent()'s own throwIfAborted() and never reaches
-    // onAgentEnd at all (aborted-and-superseded is already covered by the
-    // A3/A4 disk/lease guard, and never emits events in the first place).
-    // The REAL gap is a run that reaches "failed" WITHOUT any abort — e.g. a
-    // parallel() fan-out where one sibling ('failer') throws a plain
-    // non-recoverable error while another ('straggler') is still in flight:
-    // Promise.all rejects immediately (failing the whole run) but does NOT
-    // cancel 'straggler', and nothing ever aborts the run's signal. resume()
-    // is then callable on this "failed" run (no abort needed) and builds a
-    // BRAND NEW managed/controller — leaving the OLD 'straggler' running
-    // against the OLD (now superseded) managed with a signal that will NEVER
-    // trip throwIfAborted(). When it finally resolves, it WILL reach
-    // onAgentEnd — this must be suppressed because the old managed is no
-    // longer current, not because of any abort.
+    // Same race as #A4 (pause() then immediately resume(), the OLD execution's
+    // 'second' agent hangs until aborted and only rejects ~40ms later), but
+    // this test targets emitLive()'s isCurrent() gate directly rather than
+    // persisted status: executeRun()'s own catch tail (reached when the stale
+    // execution's runWorkflow() promise finally rejects) unconditionally
+    // computes `usageLimitPaused` and, when it's false and an "error" listener
+    // is attached, calls `this.emitLive(managed, "error", ...)`. With the gate
+    // intact, isCurrent(managed) is false by then (resume() already replaced
+    // this.runs's entry for runId with a brand-new managed/controller), so
+    // that emit is silently dropped. Removing the isCurrent() check inside
+    // emitLive() (the exact mutation this test targets) would let that stale
+    // "error" event reach every listener — including, in production, the task
+    // panel's failure-delivery path — for a run that has already resumed (and,
+    // as asserted below, completed successfully).
+    let secondAttempts = 0;
+    const agent = {
+      async run(prompt: string, options?: { signal?: AbortSignal; onUsage?: (u: AgentUsage) => void }) {
+        if (prompt === "first") {
+          options?.onUsage?.({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0, cost: 0 });
+          return "first-result";
+        }
+        secondAttempts++;
+        if (secondAttempts === 1) {
+          return new Promise((_resolve, reject) => {
+            const fire = () => setTimeout(() => reject(new Error("stale agent rejected")), 40);
+            if (options?.signal?.aborted) fire();
+            else options?.signal?.addEventListener("abort", fire, { once: true });
+          });
+        }
+        options?.onUsage?.({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0, cost: 0 });
+        return "second-result";
+      },
+    };
+    const manager = new WorkflowManager({ cwd, agent });
+    const errorEvents: unknown[] = [];
+    manager.on("error", (e) => errorEvents.push(e));
+
+    const { runId, promise } = manager.startInBackground(twoAgentScript);
+    promise.catch(() => {});
+    for (let i = 0; i < 200 && secondAttempts === 0; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    assert.equal(secondAttempts, 1, "'second' should be in flight before pausing");
+
+    assert.equal(manager.pause(runId), true);
+    assert.equal(await manager.resume(runId), true);
+
+    for (let i = 0; i < 200 && manager.getRun(runId)?.status === "running"; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    assert.equal(manager.getPersistence().load(runId)?.status, "completed", "the resumed execution completes");
+
+    // Wait past the stale execution's delayed (40ms) rejection settling —
+    // this is when its executeRun() catch tail runs and attempts the stray
+    // emitLive("error", ...).
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    assert.equal(
+      errorEvents.length,
+      0,
+      "the stale (paused, superseded) execution's delayed rejection must never reach an 'error' listener",
+    );
+  }),
+);
+
+test(
+  "resume() superseding a run-fatal-aborted failed run never delivers a stray sibling agent's agentEnd event (#1)",
+  withTempCwd(async (cwd) => {
+    // Historical note: this test used to document a genuine gap — a run that
+    // reached "failed" WITHOUT managed.controller ever aborting (a parallel()
+    // fan-out where one sibling ('failer') throws a non-recoverable error
+    // while another ('straggler') is still in flight: Promise.all rejects
+    // immediately but does NOT cancel 'straggler'). That gap is now closed at
+    // the ROOT — runWorkflow's own run-fatal handling (SharedRuntime.
+    // runFatalController, see workflow.ts) fires the instant 'failer's error
+    // escapes the top-level script, and every in-flight agent (including
+    // 'straggler') links its abort controller to that signal. So 'straggler'
+    // still runs to completion here (the fake agent below doesn't check its
+    // signal, simulating a real subagent process that doesn't cooperate with
+    // abort) — stragglerSettles below proves that — but once it resolves,
+    // agentImpl's OWN throwIfAborted() now trips before onAgentEnd is ever
+    // called, for BOTH the old (never-resumed) execution and the new
+    // (resumed) one, since 'failer' fails identically on replay. So
+    // onAgentEnd for "straggler" is never delivered at all — a strictly
+    // stronger guarantee than the old isCurrent()-based suppression this test
+    // originally probed (that guard remains in place as defense-in-depth for
+    // OTHER supersede paths — pause()/stop()/deleteRun() — see the tests
+    // below), it just never has to fire for THIS scenario anymore.
+    // managed.controller.signal itself still never aborts here (asserted
+    // below) — the two abort signals are deliberately independent (see
+    // SharedRuntime.runFatalController's doc comment).
     let stragglerSettles = 0;
     const agent = {
       async run(prompt: string, options?: { onUsage?: (u: AgentUsage) => void }) {
         if (prompt === "failer") {
           throw new WorkflowError("boom", WorkflowErrorCode.AGENT_EXECUTION_ERROR, { recoverable: false });
         }
-        // "straggler": a real delay, entirely unrelated to the sibling's
-        // failure or to abort — it just takes time to answer.
+        // "straggler": a real delay, and deliberately ignores any abort
+        // signal — simulating a real subagent process that doesn't
+        // cooperate with cancellation.
         await new Promise((resolve) => setTimeout(resolve, 60));
         stragglerSettles++;
         options?.onUsage?.({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0, cost: 0 });
@@ -2059,16 +2135,18 @@ return xs`;
     for (let i = 0; i < 200 && manager.getRun(runId)?.status !== "failed"; i++) {
       await new Promise((resolve) => setTimeout(resolve, 5));
     }
-    assert.equal(manager.getRun(runId)?.status, "failed", "the run must fail (via 'failer') without ever aborting");
+    assert.equal(manager.getRun(runId)?.status, "failed", "the run must fail (via 'failer')");
     assert.equal(
       manager.getRun(runId)?.controller.signal.aborted,
       false,
-      "confirms this failure path never aborts — the real gap this test targets",
+      "managed.controller (options.signal) itself is never aborted by a run-fatal error — only the internal runFatalController is",
     );
     const oldManaged = manager.getRun(runId);
 
     // Resume: builds a brand-new managed/controller for this runId. The OLD
-    // managed's 'straggler' call is still in flight, entirely unaffected.
+    // execution's 'straggler' call is still in flight (its run-fatal abort
+    // only discards its RESULT once it settles — it doesn't forcibly kill a
+    // signal-ignoring runner mid-call), entirely unaffected by resume().
     assert.equal(await manager.resume(runId), true);
     assert.notEqual(manager.getRun(runId), oldManaged, "resume() must have replaced the managed run object");
 
@@ -2079,48 +2157,60 @@ return xs`;
     assert.equal(stragglerSettles, 2, "both the old (stale) and new (current) straggler calls actually ran");
     assert.equal(
       agentEndsByLabel.get("straggler"),
-      1,
-      "only the current execution's straggler should emit agentEnd — the stale one must be suppressed",
+      undefined,
+      "run-fatal abort suppresses BOTH stragglers' agentEnd before the manager ever sees them",
     );
   }),
 );
 
 test(
-  "writeRunToDisk's own isCurrent guard is independently load-bearing: a stale schedulePersist deferred timer must not write (#2)",
+  "writeRunToDisk's isCurrent guard is unreachable defense-in-depth: run-fatal abort now stops a stale straggler from ever journaling (#2)",
   withTempCwd(async (cwd) => {
-    // persistRun() early-returns on a stale `managed` before it would clear
-    // any pending throttled timer — so mutation testing showed removing
-    // writeRunToDisk's OWN isCurrent check survives the suite: every OTHER
-    // test's stale write happens to arrive via a direct persistRun() call
-    // (already guarded there). The one path that funnels straight into
-    // writeRunToDisk WITHOUT ever going through persistRun() is
-    // schedulePersist()'s deferred setTimeout callback — reachable only when
-    // a stale (never-aborted, superseded) execution's onAgentJournal fires
-    // AFTER supersede and schedules a BRAND NEW timer for a runId that
-    // nothing else currently has one pending for (see the "stray sibling"
-    // test above for why resume() on a never-aborted failed run is the way
-    // to get a genuinely stale-but-still-running agent call).
+    // HISTORY: this test used to drive a stale schedulePersist() deferred
+    // timer (the one path into writeRunToDisk() that skips persistRun()'s own
+    // isCurrent guard) by having a superseded-but-never-aborted execution's
+    // straggler settle and journal AFTER resume() replaced it. That trigger
+    // required a run to reach "failed" WITHOUT managed.controller ever
+    // aborting AND its straggler's onAgentJournal still firing after the
+    // fact — exactly the gap item 1 (run-fatal abort, see
+    // SharedRuntime.runFatalController in workflow.ts) closes: ANY error that
+    // fails a top-level run now seals that SAME execution's shared runtime
+    // before its own catch returns, so a sibling straggler within THAT
+    // execution — like 'straggler' below — trips throwIfAborted() the moment
+    // it resolves and NEVER reaches onAgentJournal (see the flow proven
+    // below). Since onAgentJournal is schedulePersist()'s only call site,
+    // there is no longer a way to construct a genuinely stale (superseded,
+    // un-aborted) execution whose straggler still journals afterward — every
+    // status transition that would make a run resumable (paused OR failed)
+    // is now, structurally, always preceded by at least one abort signal
+    // (managed.controller for pause()/stop(), or shared.runFatalController
+    // for a run-fatal escape) tripping for that same execution first.
     //
-    // Timing: the OLD execution's 'straggler' (its first invocation) settles
-    // quickly (30ms) and alone registers the stray timer; the NEW
-    // execution's OWN 'straggler' (second invocation) is deliberately much
-    // slower (500ms) so it can't interfere with or mask the stray timer's
-    // ~400ms throttle window.
-    let stragglerCalls = 0;
+    // The isCurrent() check inside writeRunToDisk() (independent of, and
+    // additional to, persistRun()'s own early-return) is KEPT as
+    // defense-in-depth — it costs nothing, and protects against a future
+    // change that reopens a stale-journal path without anyone re-deriving
+    // this whole chain of reasoning. This test now asserts the structural
+    // closure directly (the straggler's result never reaches the journal at
+    // all) instead of asserting a disk-write side effect that no longer has
+    // a way to occur — a test that only proved "nothing happened" for a path
+    // that can no longer be exercised would silently stop meaning anything.
     const agent = {
-      async run(prompt: string, options?: { onUsage?: (u: AgentUsage) => void }) {
+      async run(prompt: string) {
         if (prompt === "failer") {
           throw new WorkflowError("boom", WorkflowErrorCode.AGENT_EXECUTION_ERROR, { recoverable: false });
         }
-        stragglerCalls++;
-        const delayMs = stragglerCalls === 1 ? 30 : 500;
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-        options?.onUsage?.({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0, cost: 0 });
-        return `straggler-${stragglerCalls}`;
+        // "straggler": settles well after 'failer' has already failed the run.
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        return "straggler-stale";
       },
     };
     const manager = new WorkflowManager({ cwd, agent });
     manager.on("error", () => {});
+    const journaledResults: unknown[] = [];
+    manager.on("agentEnd", (e: { label: string; result: unknown }) => {
+      if (e.label === "straggler") journaledResults.push(e.result);
+    });
 
     const script = `export const meta = { name: 'stray_timer_demo', description: 'stray schedulePersist timer' }
 const xs = await parallel([
@@ -2135,27 +2225,90 @@ return xs`;
       await new Promise((resolve) => setTimeout(resolve, 5));
     }
     assert.equal(manager.getRun(runId)?.status, "failed");
-    assert.equal(manager.getRun(runId)?.controller.signal.aborted, false, "never aborted — the real gap");
+    assert.equal(manager.getRun(runId)?.controller.signal.aborted, false, "managed.controller itself is never aborted");
 
-    assert.equal(await manager.resume(runId), true);
-
-    // Wait past the OLD straggler's 30ms settle (registers the stray timer)
-    // but stay well before its ~400ms throttle fires, and well before the
-    // NEW straggler's own 500ms settle.
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const beforeStaleWrite = manager.getPersistence().load(runId);
-    assert.ok(beforeStaleWrite, "run should still be persisted at this point");
-
-    // Wait past the stray timer's ~400ms throttle window, but still short of
-    // the NEW execution's own straggler settling at ~500ms.
-    await new Promise((resolve) => setTimeout(resolve, 350));
-
-    const afterStaleWindow = manager.getPersistence().load(runId);
+    // Wait well past the OLD straggler's 30ms settle. Its result must NEVER
+    // reach an agentEnd event — throwIfAborted() (tripped by run-fatal abort,
+    // sealed the instant 'failer' escaped) discards it before onAgentJournal
+    // (and therefore schedulePersist) is ever called.
+    await new Promise((resolve) => setTimeout(resolve, 80));
     assert.equal(
-      afterStaleWindow?.updatedAt,
-      beforeStaleWrite?.updatedAt,
-      "the stray schedulePersist timer (from the stale execution's straggler) must not write to disk",
+      journaledResults.includes("straggler-stale"),
+      false,
+      "the old (never-aborted-by-controller) execution's straggler must never journal — run-fatal abort discards it first",
     );
+
+    const persisted = manager.getPersistence().load(runId);
+    const journal = persisted?.journal ?? [];
+    assert.ok(
+      !journal.some((entry) => entry.result === "straggler-stale"),
+      "the persisted journal must never contain the stale straggler's result either — schedulePersist() is only ever " +
+        "called from onAgentJournal, so if the journal never sees it, no stray timer was ever scheduled for it",
+    );
+    // (resume()'s own correctness — including a genuinely resumed execution's
+    // writes landing normally — is covered by #A3/#A4 and the other resume
+    // tests above; this test's whole point is the pre-resume structural
+    // closure proven above, not resume() itself.)
+  }),
+);
+
+test(
+  "concurrent agents sharing a label get correctly attributed onAgentEnd results (never swapped)",
+  withTempCwd(async (cwd) => {
+    // Two agents in the same parallel() fan-out share a label ('x') — a
+    // routine pattern (parallel()'s own default label is phase-scoped, not
+    // per-call-unique, and authors often reuse a label across a fan-out). 'A'
+    // (started first) finishes quickly; 'B' (started second) finishes much
+    // later. Before keying snapshot lookups on the agent CALL's unique id
+    // (see WorkflowRunOptions.onAgentEnd's `id` field in workflow.ts), the
+    // manager resolved an onAgentEnd event by reverse-scanning
+    // managed.snapshot.agents for the last-pushed entry with a matching label
+    // AND status "running" — which, for two concurrently-running same-label
+    // agents, picks whichever entry the scan happens to land on rather than
+    // the one THIS event actually belongs to. Here that would misattribute
+    // A's (fast) result onto B's snapshot slot (B is the last-pushed
+    // still-"running" entry when A's event fires), and later attribute B's
+    // (slow) result onto A's slot — a full swap.
+    const agent = {
+      async run(prompt: string) {
+        if (prompt === "A") {
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          return "result-A";
+        }
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return "result-B";
+      },
+    };
+    const manager = new WorkflowManager({ cwd, agent });
+    manager.on("error", () => {});
+
+    const script = `export const meta = { name: 'shared_label_demo', description: 'same-label concurrency' }
+const xs = await parallel([
+  () => agent('A', { label: 'x' }),
+  () => agent('B', { label: 'x' }),
+])
+return xs`;
+
+    const { runId, promise } = manager.startInBackground(script);
+    promise.catch(() => {});
+
+    // Wait past A's ~5ms completion but well before B's ~150ms one.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const midSnapshot = manager.getSnapshot(runId);
+    assert.ok(midSnapshot, "run must still be live at this point");
+    if (!midSnapshot) throw new Error("unreachable");
+    const [firstAgent, secondAgent] = midSnapshot.agents;
+    assert.equal(firstAgent.label, "x");
+    assert.equal(secondAgent.label, "x");
+    assert.equal(firstAgent.status, "done", "the first-started agent (A) has already finished");
+    assert.equal(firstAgent.resultPreview, "result-A", "A's own result must land on A's own snapshot entry");
+    assert.equal(secondAgent.status, "running", "the second-started agent (B) is still genuinely in flight");
+
+    // Wait past B's completion too, then verify final attribution is still correct.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const finalSnapshot = manager.getSnapshot(runId);
+    assert.equal(finalSnapshot?.agents[0].resultPreview, "result-A", "A's slot must still hold A's result");
+    assert.equal(finalSnapshot?.agents[1].resultPreview, "result-B", "B's slot must hold B's own result, not A's");
   }),
 );
 

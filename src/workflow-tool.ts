@@ -100,7 +100,7 @@ const workflowToolSchema = Type.Object({
   tokenBudget: Type.Optional(
     Type.Number({
       description:
-        "Soft pre-call token gate for the whole run. Once recorded spend reaches it, further agent() calls fail; concurrent in-flight work can overshoot. Omit to use configured `defaultTokenBudget`; without one, the run is unlimited. Set it only when the user asks to bound spend.",
+        "Optional user-requested soft spend gate, not a planning target. Do not set `tokenBudget` unless the user explicitly supplies a cap or asks you to choose one; never infer or invent one from task size. If omitted, the configured `defaultTokenBudget` applies; without one, the run is unlimited. Reaching the gate blocks later `agent()` calls; concurrent in-flight work can overshoot.",
     }),
   ),
   resumeFromRunId: Type.Optional(

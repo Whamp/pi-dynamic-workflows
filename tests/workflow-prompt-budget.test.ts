@@ -52,7 +52,12 @@ const RENDERED_PROMPT_BUDGET_BYTES = 800;
 // — an explicit, minimal, JSON-Schema-valid object type (additional
 // properties are allowed by default without needing to spell that out) —
 // increasing this compact definition from 4,267 to 4,283 bytes (+16).
-const TOOL_DEFINITION_BUDGET_BYTES = 4_283;
+//
+// #127 adopts the reviewed tokenBudget contract verbatim rather than
+// compressing its wording to preserve the previous ceiling. The exact text
+// increases the measured definition from 4,276 to 4,392 bytes (+116), so the
+// accepted ceiling moves from 4,283 to 4,392 bytes (+109).
+const TOOL_DEFINITION_BUDGET_BYTES = 4_392;
 
 test("rendered workflow prompt contribution stays within its accepted size", async () => {
   await withRenderedWorkflow(async ({ systemPrompt, promptLines }) => {

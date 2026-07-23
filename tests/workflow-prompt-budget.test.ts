@@ -53,10 +53,11 @@ const RENDERED_PROMPT_BUDGET_BYTES = 800;
 // properties are allowed by default without needing to spell that out) —
 // increasing this compact definition from 4,267 to 4,283 bytes (+16).
 //
-// #127 adopts the reviewed tokenBudget contract verbatim rather than
-// compressing its wording to preserve the previous ceiling. The exact text
-// increases the measured definition from 4,276 to 4,392 bytes (+116), so the
-// accepted ceiling moves from 4,283 to 4,392 bytes (+109).
+// #127 compressed the reviewed tokenBudget contract to stay under the
+// previous ceiling; this follow-up restores the agreed text verbatim
+// instead. The exact wording increases the measured definition from 4,276
+// to 4,392 bytes (+116), and the accepted ceiling moves with it, from
+// 4,283 to 4,392.
 const TOOL_DEFINITION_BUDGET_BYTES = 4_392;
 
 test("rendered workflow prompt contribution stays within its accepted size", async () => {
